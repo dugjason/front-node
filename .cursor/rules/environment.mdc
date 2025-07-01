@@ -1,0 +1,33 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Package Manager Rules
+
+## Use pnpm for All Package Management
+This project uses `pnpm` as the package manager. All package management and script execution should be done using `pnpm` commands.
+
+## Package Installation
+- Use `pnpm install` to install dependencies
+- Use `pnpm add <package>` to add dependencies
+- Use `pnpm add -D <package>` to add dev dependencies
+- Use `pnpm remove <package>` to remove dependencies
+
+## Running Scripts
+- Use `pnpm run <script>` or `pnpm <script>` to run npm scripts
+- Available scripts:
+  - `pnpm build` - Build the project
+  - `pnpm dev` - Run development build with watch mode
+  - `pnpm test` - Run tests
+  - `pnpm test:watch` - Run tests in watch mode
+  - `pnpm lint` - Lint the code
+
+## Running Commands
+- Use `pnpm dlx <command>` instead of `npx <command>`
+- Example: `pnpm dlx typescript --version` instead of `npx typescript --version`
+
+## Version Management
+- Use `pnpm version patch|minor|major` for version bumps
+- Do NOT use `npm version` or `yarn version`
+

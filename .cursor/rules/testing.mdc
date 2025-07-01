@@ -1,0 +1,43 @@
+---
+description: 
+globs: *test*
+alwaysApply: false
+---
+# Test File Organization Rules
+
+## Test Directory Structure
+- All test files MUST be created in the `./tests/` directory
+- Test files MUST use the naming convention `<name>.test.ts`
+- Do NOT create test files in `src/__tests__/` or `__tests__/` directories
+- Do NOT create separate test directories within `src/`
+
+## Test File Naming Convention
+- Use descriptive names that match the module being tested
+- Examples:
+  - `client.test.ts` for testing `src/client.ts`
+  - `oauth.test.ts` for testing `src/oauth.ts`
+  - `teammates.test.ts` for testing `src/resources/teammates.ts`
+
+## Import Paths in Tests
+- Import from source files using relative paths from `./tests/` to `./src/`
+- Example: `import { FrontClient } from "../src/client"`
+- Example: `import { Teammates } from "../src/resources/teammates"`
+
+## Test Organization
+- Group related tests using `describe()` blocks
+- Use descriptive test names with `it()` or `test()`
+- Include both positive and negative test cases
+- Test error conditions and edge cases
+
+## Examples
+```typescript
+// ./tests/client.test.ts
+import { describe, it, expect } from "vitest"
+import { FrontClient } from "../src/client"
+
+describe("FrontClient", () => {
+  it("should create a client with API key", () => {
+    // test implementation
+  })
+})
+```
