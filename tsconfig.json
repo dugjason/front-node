@@ -1,18 +1,22 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
-    "module": "commonjs",
-    "lib": ["ES2020"],
+    "target": "ES2022",
+    "module": "ESNext",
+    "lib": ["ES2022"],
     "outDir": "./dist",
     "strict": true,
     "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
     "resolveJsonModule": true,
-    "moduleResolution": "node"
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": false,
+    "noEmit": false,
+    "isolatedModules": true
   },
   "include": ["src/**/*", "tests/**/*.test.ts"],
   "exclude": ["node_modules", "dist"]
