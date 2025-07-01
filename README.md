@@ -270,60 +270,44 @@ const teammates: Teammate[] = (await front.teammates.list())._results;
 
 ## Releases
 
-This package uses automated releases with semantic versioning. Releases are automatically published to npm when changes are merged to the main branch.
+This package uses automated publishing with manual version management. When changes are merged to the main branch, the current version in `package.json` is automatically published to npm.
 
 ### Release Process
 
-1. **Automatic Version Bumping**: The version is automatically determined based on commit messages:
+1. **Version Management**: Version bumps are handled manually using semantic versioning:
    - **Patch** (`1.0.0` → `1.0.1`): Bug fixes, documentation updates, refactoring
-   - **Minor** (`1.0.0` → `1.1.0`): New features, enhancements (use `feat:` or `feature:` prefix)
-   - **Major** (`1.0.0` → `2.0.0`): Breaking changes (include `BREAKING CHANGE:` or `major:` prefix)
+   - **Minor** (`1.0.0` → `1.1.0`): New features, enhancements
+   - **Major** (`1.0.0` → `2.0.0`): Breaking changes
 
-2. **Commit Message Examples**:
+2. **How to Release**:
    ```bash
-   # Patch release
-   git commit -m "fix: resolve authentication timeout issue"
-   git commit -m "docs: update API examples"
+   # Bump version using pnpm (recommended)
+   pnpm version patch   # for bug fixes
+   pnpm version minor   # for new features
+   pnpm version major   # for breaking changes
    
-   # Minor release  
-   git commit -m "feat: add conversation archiving support"
-   git commit -m "feature: implement teammate status updates"
+   # Or manually edit package.json and create a git tag
+   git tag v1.2.3
    
-   # Major release
-   git commit -m "feat: redesign client configuration API
-   
-   BREAKING CHANGE: Constructor now requires explicit config object"
-   
-   git commit -m "major: remove deprecated OAuth v1 support"
+   # Push changes and tags
+   git push origin main --tags
    ```
 
-3. **What Happens on Release**:
-   - Tests run on Node.js 18, 20, and 22
+3. **What Happens on Push to Main**:
+   - Tests run on Node.js 20 and 22
    - Code is linted with Biome
    - TypeScript compilation is verified
-   - Version is bumped in `package.json`
-   - Git tag is created (e.g., `v1.2.3`)
-   - Package is published to npm
-   - GitHub release is created
-
-### Manual Release
-
-If you need to trigger a release manually or skip the automated process:
-
-```bash
-# Bump version manually
-npm version patch|minor|major
-
-# Push with tags
-git push origin main --tags
-```
+   - Package is published to npm using the current `package.json` version
+   - GitHub release is created with the current version tag
 
 ### Development Workflow
 
 1. Create feature branch from `main`
-2. Make changes with descriptive commit messages
+2. Make changes and commit
 3. Open Pull Request
-4. After review and merge to `main`, release happens automatically
+4. After review and merge to `main`:
+   - If you want to publish: bump version first, then merge
+   - If not ready to publish: merge without version bump
 
 ## Requirements
 
