@@ -3,10 +3,9 @@
     "target": "ES2022",
     "module": "ESNext",
     "lib": ["ES2022"],
+    "rootDir": "./src",
     "outDir": "./dist",
     "strict": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "declaration": true,
@@ -16,8 +15,9 @@
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": false,
     "noEmit": false,
-    "isolatedModules": true
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true
   },
-  "include": ["src/**/*", "tests/**/*.test.ts"],
+  "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
 }
