@@ -1,6 +1,6 @@
 {
   "name": "@dugjason/front-node",
-  "version": "0.1.0-alpha.1",
+  "version": "0.1.0-alpha.2",
   "description": "Modern TypeScript SDK for the Front.com API",
   "type": "module",
   "main": "dist/index.js",

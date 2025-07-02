@@ -5,22 +5,25 @@ A modern TypeScript SDK for the [Front.com API](https://dev.frontapp.com/referen
 ## Installation
 
 ```bash
-npm install front-node
+npm install @dugjason/front-node
 # or
-pnpm install front-node
+pnpm install @dugjason/front-node
 # or
-yarn add front-node
+yarn add @dugjason/front-node
 ```
 
 ## Quick Start
 
 ```typescript
-import { Front } from 'front-node';
+import { Front } from '@dugjason/front-node';
 
 // Initialize with API key (required)
 const front = new Front({ 
   apiKey: process.env.FRONT_API_KEY || 'your-api-key' 
 });
+
+// Get token details
+const tokenInfo = await front.me();
 
 // Fetch a conversation
 const conversation = await front.conversations.fetch('cnv_55c8c149');
@@ -77,6 +80,15 @@ const front = new Front({ apiKey: 'your-api-key' });
 
 ## API Reference
 
+### Token Identity
+
+```typescript
+// Get details about the current API token
+const tokenInfo = await front.me();
+console.log('Company name:', tokenInfo.name); // Company name
+console.log('Company ID:', tokenInfo.id); // Company ID (e.g., 'cmp_123')
+```
+
 ### Conversations
 
 ```typescript
@@ -125,6 +137,57 @@ const conversations = await front.teammates.getConversations('tea_123', {
   limit: 10
 });
 ```
+
+### Drafts
+
+The drafts API allows you to create, edit, list, and delete draft messages. Drafts can be created as new conversations or as replies to existing conversations.
+
+```typescript
+// Create a new draft in a channel (starts a new conversation)
+const newDraft = await front.drafts.create('cha_123', {
+  body: 'This is a new draft message',
+  subject: 'Draft Subject',
+  to: ['customer@example.com'],
+  cc: ['manager@company.com'],
+  author_id: 'tea_123',
+  mode: 'private', // 'private' or 'shared'
+  should_add_default_signature: true
+});
+
+// Create a draft reply to an existing conversation
+const replyDraft = await front.drafts.createReply('cnv_123', {
+  body: 'This is a draft reply',
+  channel_id: 'cha_123',
+  author_id: 'tea_123',
+  mode: 'shared'
+});
+
+// List drafts in a conversation
+const drafts = await front.drafts.list('cnv_123', {
+  limit: 10
+});
+
+// Edit/update a draft
+const updatedDraft = await front.drafts.edit('msg_123', {
+  body: 'Updated draft content',
+  subject: 'Updated Subject',
+  channel_id: 'cha_123',
+  version: 'draft-version-token', // Required for safe updates
+  mode: 'shared'
+});
+
+// Delete a draft
+await front.drafts.delete('msg_123', {
+  version: 'draft-version-token' // Required for safe deletion
+});
+```
+
+**Important Notes about Drafts:**
+- The `version` field is required for editing and deleting drafts to ensure safe concurrent operations
+- Draft modes: `private` (visible to author only) or `shared` (visible to all teammates with access)
+- When creating drafts in channels, you're starting a new conversation
+- When creating draft replies, you're adding to an existing conversation
+- Attachments can be included when creating drafts using base64-encoded data
 
 ## OAuth Token Management
 
@@ -259,7 +322,7 @@ try {
 The SDK is built with TypeScript and provides full type definitions:
 
 ```typescript
-import { Front, Conversation, Teammate } from 'front-node';
+import { Front, Conversation, Teammate } from '@dugjason/front-node';
 
 const front = new Front({ apiKey: 'your-api-key' });
 

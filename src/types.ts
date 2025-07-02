@@ -48,6 +48,15 @@ export interface ListResponse<T> {
   }
 }
 
+// Token Identity types
+export interface TokenIdentity {
+  _links: {
+    self: string
+  }
+  name: string
+  id: string
+}
+
 // Teammate related types
 export interface Teammate {
   _links: {
@@ -104,22 +113,7 @@ export interface Conversation {
     handle: string
     role: string
   }
-  tags: Array<{
-    _links: {
-      self: string
-      related: {
-        conversations: string
-        owner: string
-        children: string
-      }
-    }
-    id: string
-    name: string
-    highlight: string
-    is_private: boolean
-    created_at: number
-    updated_at: number
-  }>
+  tags: Tag[]
   created_at: number
   is_private: boolean
 }
@@ -161,4 +155,175 @@ export interface UpdateAccountData {
 
 export interface AccountContactsParams extends PaginationParams {
   q?: string
+}
+
+// Draft related types
+export interface Message {
+  _links: {
+    self: string
+    related: {
+      conversation: string
+      message_replied_to?: string
+      message_seen?: string
+    }
+  }
+  id: string
+  message_uid?: string
+  type:
+    | "call"
+    | "custom"
+    | "email"
+    | "facebook"
+    | "front_chat"
+    | "googleplay"
+    | "intercom"
+    | "internal"
+    | "phone-call"
+    | "sms"
+    | "tweet"
+    | "tweet_dm"
+    | "whatsapp"
+    | "yalo_wha"
+  is_inbound: boolean
+  draft_mode?: "shared" | "private" | null
+  error_type?: string | null
+  version?: string
+  created_at: number
+  subject?: string
+  blurb?: string
+  author?: Teammate
+  recipients: Array<{
+    _links: {
+      related: {
+        contact: string
+      }
+    }
+    handle: string
+    role: string
+  }>
+  body: string
+  text?: string
+  attachments?: Array<{
+    filename: string
+    url: string
+    content_type: string
+    size: number
+    metadata: {
+      is_inline: boolean
+      cid?: string
+    }
+  }>
+  signature?: {
+    id: string
+    name: string
+    sender_info?: string
+    body: string
+  }
+  metadata?: Record<string, unknown>
+}
+
+// Draft is just a Message with is_draft: true and specific draft properties
+export interface Draft extends Message {
+  draft_mode: "shared" | "private"
+  version: string
+}
+
+export interface CreateDraftData {
+  author_id?: string
+  to?: string[]
+  cc?: string[]
+  bcc?: string[]
+  subject?: string
+  body: string
+  quote_body?: string
+  attachments?: Array<{
+    filename: string
+    content_type: string
+    data: string
+  }>
+  mode?: "private" | "shared"
+  signature_id?: string
+  should_add_default_signature?: boolean
+}
+
+export interface CreateDraftReplyData extends CreateDraftData {
+  channel_id: string
+}
+
+export interface EditDraftData extends CreateDraftReplyData {
+  version?: string
+  mode?: "shared"
+}
+
+export interface DeleteDraftData {
+  version: string
+}
+
+// Tag related types
+export interface Tag {
+  _links: {
+    self: string
+    related: {
+      conversations: string
+      owner: string
+      parent_tag?: string
+      children: string
+    }
+  }
+  id: string
+  name: string
+  description?: string
+  highlight?:
+    | "grey"
+    | "pink"
+    | "red"
+    | "orange"
+    | "yellow"
+    | "green"
+    | "light-blue"
+    | "blue"
+    | "purple"
+    | null
+  is_private: boolean
+  is_visible_in_conversation_lists: boolean
+  created_at: number
+  updated_at: number
+}
+
+export interface CreateTagData {
+  name: string
+  description?: string
+  highlight?:
+    | "grey"
+    | "pink"
+    | "red"
+    | "orange"
+    | "yellow"
+    | "green"
+    | "light-blue"
+    | "blue"
+    | "purple"
+  is_visible_in_conversation_lists?: boolean
+}
+
+export interface UpdateTagData {
+  name?: string
+  description?: string
+  highlight?:
+    | "grey"
+    | "pink"
+    | "red"
+    | "orange"
+    | "yellow"
+    | "green"
+    | "light-blue"
+    | "blue"
+    | "purple"
+  parent_tag_id?: string | null
+  is_visible_in_conversation_lists?: boolean
+}
+
+export interface TagsListParams extends PaginationParams {
+  sort_by?: "id"
+  sort_order?: "asc" | "desc"
 }
