@@ -1,5 +1,6 @@
 import { FrontClient } from "./client"
 import { Accounts } from "./resources/accounts"
+import { Contacts } from "./resources/contacts"
 import { Conversations } from "./resources/conversations"
 import { Drafts } from "./resources/drafts"
 import { Tags } from "./resources/tags"
@@ -12,6 +13,7 @@ export class Front {
   public readonly teammates: Teammates
   public readonly conversations: Conversations
   public readonly accounts: Accounts
+  public readonly contacts: Contacts
   public readonly drafts: Drafts
   public readonly tags: Tags
 
@@ -22,6 +24,7 @@ export class Front {
     this.teammates = new Teammates(this.client)
     this.conversations = new Conversations(this.client)
     this.accounts = new Accounts(this.client)
+    this.contacts = new Contacts(this.client)
     this.drafts = new Drafts(this.client)
     this.tags = new Tags(this.client)
   }
