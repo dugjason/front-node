@@ -1,21 +1,32 @@
 // Main SDK class
 
-// Client and configuration types
 export { FrontClient } from "./client"
-export { Front, Front as default } from "./front"
+// Client and configuration types
+export { Front } from "./front"
 export { OAuthTokenManager } from "./oauth"
+
+// Export all resource classes
 export { Accounts } from "./resources/accounts"
+export { Contacts } from "./resources/contacts"
 export { Conversations } from "./resources/conversations"
 export { Drafts } from "./resources/drafts"
 export { Tags } from "./resources/tags"
-// Resource classes
 export { Teammates } from "./resources/teammates"
-// Type definitions
+
+// Export all types
 export type {
   Account,
   AccountContactsParams,
+  Contact,
+  ContactHandle,
+  ContactNote,
+  ContactNotesParams,
+  ContactsListParams,
   Conversation,
   CreateAccountData,
+  CreateContactData,
+  CreateContactHandleData,
+  CreateContactNoteData,
   CreateDraftData,
   CreateDraftReplyData,
   CreateTagData,
@@ -25,6 +36,7 @@ export type {
   FrontConfig,
   FrontError,
   ListResponse,
+  MergeContactsData,
   Message,
   OAuthConfig,
   OAuthTokens,
@@ -35,6 +47,7 @@ export type {
   Teammate,
   TokenIdentity,
   UpdateAccountData,
+  UpdateContactData,
   UpdateTagData,
   UpdateTeammateData,
 } from "./types"

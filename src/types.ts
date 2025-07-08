@@ -157,6 +157,122 @@ export interface AccountContactsParams extends PaginationParams {
   q?: string
 }
 
+// Contact related types
+export interface Contact {
+  _links: {
+    self: string
+    related: {
+      notes: string
+      conversations: string
+      owner: string
+    }
+  }
+  id: string
+  name: string
+  description?: string
+  avatar?: {
+    url: string
+    source: string
+  }
+  is_spammer: boolean
+  links: string[]
+  handles: Array<{
+    handle: string
+    source: string
+  }>
+  groups: Array<{
+    _links: {
+      self: string
+      related: {
+        contacts: string
+        owner: string
+      }
+    }
+    id: string
+    name: string
+  }>
+  custom_fields?: Record<string, unknown>
+  is_private: boolean
+  created_at: number
+  updated_at: number
+}
+
+export interface CreateContactData {
+  name: string
+  description?: string
+  avatar?: {
+    url: string
+    source: string
+  }
+  is_spammer?: boolean
+  links?: string[]
+  handles?: Array<{
+    handle: string
+    source: string
+  }>
+  group_names?: string[]
+  custom_fields?: Record<string, unknown>
+  is_private?: boolean
+}
+
+export interface UpdateContactData {
+  name?: string
+  description?: string
+  avatar?: {
+    url: string
+    source: string
+  }
+  is_spammer?: boolean
+  links?: string[]
+  group_names?: string[]
+  custom_fields?: Record<string, unknown>
+  is_private?: boolean
+}
+
+export interface ContactsListParams extends PaginationParams {
+  q?: string
+  sort_by?: "created_at" | "updated_at"
+  sort_order?: "asc" | "desc"
+}
+
+export interface MergeContactsData {
+  contact_ids: string[]
+}
+
+export interface ContactHandle {
+  handle: string
+  source: string
+}
+
+export interface CreateContactHandleData {
+  handle: string
+  source: string
+}
+
+export interface ContactNote {
+  _links: {
+    self: string
+    related: {
+      contact: string
+      author: string
+    }
+  }
+  id: string
+  author: Teammate
+  body: string
+  created_at: number
+  updated_at: number
+}
+
+export interface CreateContactNoteData {
+  body: string
+}
+
+export interface ContactNotesParams extends PaginationParams {
+  sort_by?: "created_at" | "updated_at"
+  sort_order?: "asc" | "desc"
+}
+
 // Draft related types
 export interface Message {
   _links: {
