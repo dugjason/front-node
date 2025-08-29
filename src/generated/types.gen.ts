@@ -419,27 +419,27 @@ export type Attachment = {
     /**
      * The unique identifier of the attachment.
      */
-    id?: string;
+    id: string;
     /**
      * Name of the attached file
      */
-    filename?: string;
+    filename: string;
     /**
      * URL to download the attached file
      */
-    url?: string;
+    url: string;
     /**
      * Content type of the attached file in [MIME format](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types). Note that some attachments types may not be supported.
      */
-    content_type?: string;
+    content_type: string;
     /**
      * Size (in byte) of the attached file
      */
-    size?: number;
+    size: number;
     /**
      * Attachment metadata
      */
-    metadata?: {
+    metadata: {
         /**
          * Whether or not the attachment is part of the message body
          */
@@ -2111,7 +2111,7 @@ export type MessageResponse = {
 };
 
 export type MessageTemplateFolderResponse = {
-    _links?: {
+    _links: {
         /**
          * Link to resource
          */
@@ -2120,29 +2120,29 @@ export type MessageTemplateFolderResponse = {
             /**
              * Link to resource's owner. Null if the current folder does not have an owner.
              */
-            owner?: string;
+            owner?: string | null;
             /**
              * Link to parent folder. Null if the current folder does not have a parent.
              */
-            parent_folder?: string;
+            parent_folder?: string | null;
             /**
              * Link to child folders. Null if the current folder does not have children.
              */
-            child_folders?: string;
+            child_folders?: string | null;
             /**
              * Link to message templates contained within this folder or children folders. Null if the current folder does not have any message templates.
              */
-            child_answers?: string;
+            child_answers?: string | null;
         };
     };
     /**
      * Unique identifier of the message template folder
      */
-    id?: string;
+    id: string;
     /**
      * Name of the message template folder
      */
-    name?: string;
+    name: string;
     /**
      * Timestamp at which the message template folder was created.
      */
@@ -2154,7 +2154,7 @@ export type MessageTemplateFolderResponse = {
 };
 
 export type MessageTemplateResponse = {
-    _links?: {
+    _links: {
         /**
          * Link to resource
          */
@@ -2163,41 +2163,41 @@ export type MessageTemplateResponse = {
             /**
              * Link to resource's owner
              */
-            owner?: string;
+            owner?: string | null;
             /**
              * Link to the parent folder that contains the message template
              */
-            parent_folder?: string;
+            parent_folder?: string | null;
         };
     };
     /**
      * Unique identifier of the message template
      */
-    id?: string;
+    id: string;
     /**
      * Name of the message template
      */
-    name?: string;
+    name: string;
     /**
      * Subject of the message template
      */
-    subject?: string;
+    subject: string | null;
     /**
      * Body of the message template
      */
-    body?: string;
+    body: string;
     /**
      * List of files attached to the response
      */
-    attachments?: Array<Attachment>;
+    attachments: Array<Attachment>;
     /**
      * Whether or not the template is available in all inboxes.
      */
-    is_available_for_all_inboxes?: boolean;
+    is_available_for_all_inboxes: boolean;
     /**
      * List of inboxes the template is available in. Null if there are no restrictions.
      */
-    inbox_ids?: Array<string>;
+    inbox_ids: Array<string> | null;
 };
 
 export type OutboundMessage = {
