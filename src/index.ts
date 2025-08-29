@@ -1,17 +1,9 @@
 // Main SDK class
 
-export { FrontClient } from "./client"
+export { APIClient } from "./core/client"
 // Client and configuration types
 export { Front } from "./front"
 export { OAuthTokenManager } from "./oauth"
-
-// Export all resource classes
-export { Accounts } from "./resources/accounts"
-export { Contacts } from "./resources/contacts"
-export { Conversations } from "./resources/conversations"
-export { Drafts } from "./resources/drafts"
-export { Tags } from "./resources/tags"
-export { Teammates } from "./resources/teammates"
 
 // Export all types
 export type {

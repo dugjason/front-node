@@ -1,14 +1,18 @@
-export type FrontConfig =
-  | {
-      apiKey: string
-      baseUrl?: string
-      oauth?: never
-    }
-  | {
-      apiKey?: never
-      baseUrl?: string
-      oauth: OAuthConfig
-    }
+interface FrontBaseConfig {
+  baseUrl?: string
+}
+
+export interface FrontApiKeyConfig extends FrontBaseConfig {
+  apiKey: string
+  oauth?: OAuthConfig
+}
+
+export interface FrontOAuthConfig extends FrontBaseConfig {
+  apiKey?: string
+  oauth: OAuthConfig
+}
+
+export type FrontConfig = FrontApiKeyConfig | FrontOAuthConfig
 
 export interface OAuthConfig {
   clientId: string
@@ -25,9 +29,9 @@ export interface OAuthTokens {
 
 export interface RequestOptions {
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"
-  path: string
+  url: string
   body?: unknown
-  params?: Record<string, unknown>
+  query?: Record<string, unknown>
 }
 
 export interface FrontError {

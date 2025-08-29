@@ -1,32 +1,46 @@
-import { FrontClient } from "./client"
-import { Accounts } from "./resources/accounts"
-import { Contacts } from "./resources/contacts"
-import { Conversations } from "./resources/conversations"
-import { Drafts } from "./resources/drafts"
-import { Tags } from "./resources/tags"
-import { Teammates } from "./resources/teammates"
+import type { APIClient } from "./core/client"
+import { APIClient as CoreClient } from "./core/client"
+import { Accounts } from "./endpoints/accounts"
+import { Tags } from "./endpoints/tags"
+import { TeammateGroups } from "./endpoints/teammate-groups"
+import { Teammates } from "./endpoints/teammates"
+import { Teams } from "./endpoints/teams"
+import { apiTokenDetails } from "./generated/sdk.gen"
 import type { FrontConfig, TokenIdentity } from "./types"
 
 export class Front {
-  private client: FrontClient
+  private client: APIClient
 
-  public readonly teammates: Teammates
-  public readonly conversations: Conversations
-  public readonly accounts: Accounts
-  public readonly contacts: Contacts
-  public readonly drafts: Drafts
-  public readonly tags: Tags
+  constructor(config?: FrontConfig) {
+    // Initializes auth
+    this.client = new CoreClient(config)
+  }
 
-  constructor(config: FrontConfig) {
-    this.client = new FrontClient(config)
+  /* Resource accessors */
 
-    // Initialize resource classes
-    this.teammates = new Teammates(this.client)
-    this.conversations = new Conversations(this.client)
-    this.accounts = new Accounts(this.client)
-    this.contacts = new Contacts(this.client)
-    this.drafts = new Drafts(this.client)
-    this.tags = new Tags(this.client)
+  private _accounts?: Accounts
+  get accounts(): Accounts {
+    return (this._accounts ??= new Accounts())
+  }
+
+  private _tags?: Tags
+  get tags(): Tags {
+    return (this._tags ??= new Tags())
+  }
+
+  private _teammates?: Teammates
+  get teammates(): Teammates {
+    return (this._teammates ??= new Teammates())
+  }
+
+  private _teammateGroups?: TeammateGroups
+  get teammateGroups(): TeammateGroups {
+    return (this._teammateGroups ??= new TeammateGroups())
+  }
+
+  private _teams?: Teams
+  get teams(): Teams {
+    return (this._teams ??= new Teams())
   }
 
   /**
@@ -34,36 +48,29 @@ export class Front {
    *
    * @returns Promise<TokenIdentity> The token identity information
    */
-  async me(): Promise<TokenIdentity> {
-    return this.client.get<TokenIdentity>("/me")
+  async me() {
+    const result = await apiTokenDetails()
+    const data = result.data as TokenIdentity | undefined
+    if (!data) {
+      throw new Error("Failed to fetch token identity")
+    }
+    return data
   }
 
   /**
    * Get the underlying HTTP client for advanced usage
    */
-  getClient(): FrontClient {
+  getClient(): APIClient {
     return this.client
-  }
-
-  /**
-   * Check if the SDK is using OAuth authentication
-   */
-  isUsingOAuth(): boolean {
-    return this.client.isUsingOAuth()
   }
 
   /**
    * Get the OAuth token manager (if using OAuth)
    */
-  getOAuthManager() {
-    return this.client.getOAuthManager()
-  }
+  getOAuthManager() {}
 
   /**
    * Update OAuth configuration (useful for updating tokens)
    */
-  updateOAuthConfig(updates: Partial<FrontConfig["oauth"]>) {
-    if (!updates) return
-    this.client.updateOAuthConfig(updates)
-  }
+  updateOAuthConfig(_updates: Partial<FrontConfig["oauth"]>) {}
 }

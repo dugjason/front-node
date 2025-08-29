@@ -1,52 +1,49 @@
-import type { FrontClient } from "../client"
-import type {
-  ListResponse,
-  PaginationParams,
-  Teammate,
-  UpdateTeammateData,
-} from "../types"
+import type { TeammateResponse } from "../generated/types.gen"
 
-export class Teammates {
-  constructor(private client: FrontClient) {}
+export class FrontTeammate {
+  constructor(private data: TeammateResponse) {}
 
-  /**
-   * List all teammates
-   */
-  async list(params?: PaginationParams): Promise<ListResponse<Teammate>> {
-    return this.client.get<ListResponse<Teammate>>("/teammates", params)
+  get id() {
+    return this.data.id ?? ""
   }
 
-  /**
-   * Fetch a specific teammate by ID
-   */
-  async fetch(teammateId: string): Promise<Teammate> {
-    return this.client.get<Teammate>(`/teammates/${teammateId}`)
+  get email() {
+    return this.data.email
   }
 
-  /**
-   * Update a teammate
-   */
-  async update(
-    teammateId: string,
-    data: UpdateTeammateData,
-  ): Promise<Teammate> {
-    return this.client.patch<Teammate>(`/teammates/${teammateId}`, data)
+  get username() {
+    return this.data.username
   }
 
-  /**
-   * Get teammate's inboxes
-   */
-  async getInboxes(teammateId: string, params?: PaginationParams) {
-    return this.client.get(`/teammates/${teammateId}/inboxes`, params)
+  get firstName() {
+    return this.data.first_name
   }
 
-  /**
-   * Get teammate's conversations
-   */
-  async getConversations(
-    teammateId: string,
-    params?: PaginationParams & { q?: string },
-  ) {
-    return this.client.get(`/teammates/${teammateId}/conversations`, params)
+  get lastName() {
+    return this.data.last_name
+  }
+
+  get isAdmin() {
+    return this.data.is_admin
+  }
+
+  get isAvailable() {
+    return this.data.is_available
+  }
+
+  get isBlocked() {
+    return this.data.is_blocked
+  }
+
+  get type() {
+    return this.data.type
+  }
+
+  get customFields() {
+    return this.data.custom_fields
+  }
+
+  toJSON() {
+    return this.data
   }
 }
