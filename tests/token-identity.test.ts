@@ -1,20 +1,12 @@
-import { describe, expect, it, vi } from "vitest"
+import { HttpResponse, http } from "msw"
+import { describe, expect, it } from "vitest"
 import { Front } from "../src/front"
-import type { TokenIdentity } from "../src/types"
-
-// Mock the FrontClient
-vi.mock("../src/client", () => ({
-  FrontClient: vi.fn().mockImplementation(() => ({
-    get: vi.fn(),
-    isUsingOAuth: vi.fn(),
-    getOAuthManager: vi.fn(),
-    updateOAuthConfig: vi.fn(),
-  })),
-}))
+import type { ApiTokenDetailsResponse } from "../src/generated/types.gen"
+import { server } from "./mocks/node.js"
 
 describe("Front.me()", () => {
   it("should fetch token identity details", async () => {
-    const mockTokenIdentity: TokenIdentity = {
+    const mockTokenIdentity: ApiTokenDetailsResponse = {
       _links: {
         self: "https://api2.frontapp.com/me",
       },
@@ -23,20 +15,22 @@ describe("Front.me()", () => {
     }
 
     const front = new Front({ apiKey: "test-api-key" })
-    const mockGet = vi
-      .spyOn(front.getClient(), "get")
-      .mockResolvedValue(mockTokenIdentity)
 
-    const result = await front.me()
+    server.use(
+      http.get("https://api2.frontapp.com/me", () =>
+        HttpResponse.json(mockTokenIdentity),
+      ),
+    )
 
-    expect(mockGet).toHaveBeenCalledWith("/me")
-    expect(result).toEqual(mockTokenIdentity)
-    expect(result.name).toBe("Test Company")
-    expect(result.id).toBe("cmp_123")
+    const { tokenIdentity } = await front.me()
+
+    expect(tokenIdentity).toEqual(mockTokenIdentity)
+    expect(tokenIdentity.name).toBe("Test Company")
+    expect(tokenIdentity.id).toBe("cmp_123")
   })
 
   it("should work with OAuth tokens", async () => {
-    const mockOAuthTokenIdentity: TokenIdentity = {
+    const mockOAuthTokenIdentity: ApiTokenDetailsResponse = {
       _links: {
         self: "https://api2.frontapp.com/me",
       },
@@ -52,15 +46,17 @@ describe("Front.me()", () => {
         refreshToken: "test-refresh-token",
       },
     })
-    const mockGet = vi
-      .spyOn(front.getClient(), "get")
-      .mockResolvedValue(mockOAuthTokenIdentity)
 
-    const result = await front.me()
+    server.use(
+      http.get("https://api2.frontapp.com/me", () =>
+        HttpResponse.json(mockOAuthTokenIdentity),
+      ),
+    )
 
-    expect(mockGet).toHaveBeenCalledWith("/me")
-    expect(result).toEqual(mockOAuthTokenIdentity)
-    expect(result.name).toBe("OAuth Company")
-    expect(result.id).toBe("cmp_456")
+    const { tokenIdentity } = await front.me()
+
+    expect(tokenIdentity).toEqual(mockOAuthTokenIdentity)
+    expect(tokenIdentity.name).toBe("OAuth Company")
+    expect(tokenIdentity.id).toBe("cmp_456")
   })
 })

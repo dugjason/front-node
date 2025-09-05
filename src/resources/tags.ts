@@ -1,34 +1,30 @@
 import { deleteTag, getTag, updateATag } from "../generated/sdk.gen"
-import type {
-  GetTagResponse,
-  TagResponse,
-  UpdateTag,
-} from "../generated/types.gen"
+import type { TagResponse, UpdateTag } from "../generated/types.gen"
 
 export class FrontTag {
   constructor(private data: TagResponse) {}
-  get id(): string {
+  get id() {
     return this.data.id
   }
-  get name(): string {
+  get name() {
     return this.data.name
   }
-  get description(): string | null {
+  get description() {
     return this.data.description
   }
-  get highlight(): string | null {
+  get highlight() {
     return this.data.highlight
   }
-  get isPrivate(): boolean {
+  get isPrivate() {
     return this.data.is_private
   }
-  get isVisibleInConversationLists(): boolean {
+  get isVisibleInConversationLists() {
     return this.data.is_visible_in_conversation_lists
   }
-  get createdAt(): number | undefined {
+  get createdAt() {
     return this.data.created_at
   }
-  get updatedAt(): number | undefined {
+  get updatedAt() {
     return this.data.updated_at
   }
   toJSON(): TagResponse {

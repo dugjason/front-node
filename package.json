@@ -1,6 +1,6 @@
 {
   "name": "@dugjason/front-node",
-  "version": "0.1.0-alpha.3",
+  "version": "0.1.0-beta.1",
   "description": "Modern TypeScript SDK for the Front.com API",
   "type": "module",
   "main": "dist/index.js",
@@ -17,7 +17,8 @@
     "lint": "biome check .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "generate:types": "openapi-ts"
   },
   "keywords": [
     "front",
@@ -30,9 +31,13 @@
   "license": "ISC",
   "packageManager": "pnpm@10.12.4",
   "devDependencies": {
-    "@biomejs/biome": "2.0.6",
+    "@biomejs/biome": "2.2.2",
+    "@faker-js/faker": "10.0.0",
+    "@hey-api/openapi-ts": "0.82.3",
     "@types/node": "^20.19.1",
-    "typescript": "^5.8.3",
+    "msw": "^2.11.1",
+    "msw-auto-mock": "0.31.0",
+    "typescript": "^5.9.2",
     "vitest": "3.2.4"
   },
   "engines": {
