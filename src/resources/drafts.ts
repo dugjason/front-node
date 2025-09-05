@@ -1,61 +1,41 @@
-import type { FrontClient } from "../client"
-import type {
-  CreateDraftData,
-  CreateDraftReplyData,
-  DeleteDraftData,
-  EditDraftData,
-  ListResponse,
-  Message,
-  PaginationParams,
-} from "../types"
+import type { MessageResponse } from "../generated/types.gen"
 
-export class Drafts {
-  constructor(private client: FrontClient) {}
+export class FrontDraft {
+  constructor(private data: MessageResponse) {}
 
-  /**
-   * Create a new draft message in a channel (starts a new conversation)
-   */
-  async create(channelId: string, data: CreateDraftData): Promise<Message> {
-    return this.client.post<Message>(`/channels/${channelId}/drafts`, data)
+  get id() {
+    return this.data.id ?? ""
   }
 
-  /**
-   * Create a draft reply to the last message in a conversation
-   */
-  async createReply(
-    conversationId: string,
-    data: CreateDraftReplyData,
-  ): Promise<Message> {
-    return this.client.post<Message>(
-      `/conversations/${conversationId}/drafts`,
-      data,
-    )
+  get messageUid() {
+    return this.data.message_uid
   }
 
-  /**
-   * List drafts for a conversation
-   */
-  async list(
-    conversationId: string,
-    params?: PaginationParams,
-  ): Promise<ListResponse<Message>> {
-    return this.client.get<ListResponse<Message>>(
-      `/conversations/${conversationId}/drafts`,
-      params,
-    )
+  get subject() {
+    return this.data.subject
   }
 
-  /**
-   * Edit/update a draft message
-   */
-  async edit(messageId: string, data: EditDraftData): Promise<Message> {
-    return this.client.patch<Message>(`/drafts/${messageId}/`, data)
+  get body() {
+    return this.data.body
   }
 
-  /**
-   * Delete a draft message
-   */
-  async delete(draftId: string, data: DeleteDraftData): Promise<void> {
-    return this.client.delete<void>(`/drafts/${draftId}`, data)
+  get text() {
+    return this.data.text
+  }
+
+  get draftMode() {
+    return this.data.draft_mode
+  }
+
+  get recipients() {
+    return this.data.recipients
+  }
+
+  get attachments() {
+    return this.data.attachments
+  }
+
+  toJSON(): MessageResponse {
+    return this.data
   }
 }

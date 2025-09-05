@@ -7,34 +7,30 @@ A modern TypeScript SDK for the [Front.com API](https://dev.frontapp.com/referen
 ```bash
 npm install @dugjason/front-node
 # or
-pnpm install @dugjason/front-node
-# or
-yarn add @dugjason/front-node
+pnpm add @dugjason/front-node
 ```
 
 ## Quick Start
 
 ```typescript
-import { Front } from '@dugjason/front-node';
+import { Front } from " @dugjason/front-node"
 
 // Initialize with API key (required)
-const front = new Front({ 
-  apiKey: process.env.FRONT_API_KEY || 'your-api-key' 
-});
+const front = new Front({ apiKey: "your-api-key" })
 
 // Get token details
-const tokenInfo = await front.me();
+const tokenInfo = await front.me()
 
 // Fetch a conversation
-const conversation = await front.conversations.fetch('cnv_55c8c149');
+const { conversation } = await front.conversations.fetch("cnv_12345")
 
 // List teammates
-const teammates = await front.teammates.list();
+const { teammates } = await front.teammates.list()
 
 // Update a teammate
-await front.teammates.update(teammates._results[0].id, {
+await front.teammates.update(teammates[0].id, {
   is_available: true
-});
+})
 ```
 
 ## Authentication
@@ -48,34 +44,73 @@ OAuth provides automatic token refresh and is required for public integrations:
 ```typescript
 const front = new Front({
   oauth: {
-    clientId: 'your-oauth-client-id',
-    clientSecret: 'your-oauth-client-secret',
-    accessToken: 'your-current-access-token',
-    refreshToken: 'your-refresh-token',
+    clientId: "your-oauth-client-id",
+    clientSecret: "your-oauth-client-secret",
+    accessToken: "your-current-access-token",
+    refreshToken: "your-refresh-token",
     
     // Optional: Called when tokens are refreshed
     onTokenRefresh: async (tokens) => {
       // Save new tokens to your database
-      await saveTokensToDatabase(tokens);
+      await saveTokensToDatabase(tokens)
     }
   }
-});
+})
 ```
 
-The SDK automatically refreshes tokens when they expire (every hour) and calls your `onTokenRefresh` callback with the new tokens.
+The SDK automatically refreshes tokens when they expire (Front issues OAuth access tokens with a 1hr TTL) and calls your `onTokenRefresh` callback with the new tokens.
 
 ### 2. API Key (Simple Setup)
 
 For testing or single-instance usage:
 
 ```typescript
-// Using environment variable (recommended)
-const front = new Front({ 
-  apiKey: process.env.FRONT_API_KEY || 'your-api-key' 
-});
+// Specify your API key when initializing the client
+const front = new Front({ apiKey: "your-api-key" })
 
-// Or provide directly
-const front = new Front({ apiKey: 'your-api-key' });
+// Or omit the auth, and we'll load it from `process.env.FRONT_API_KEY` automatically
+const front = new Front()
+```
+
+## Response Signature
+
+All requests have similar return object structure.
+The response will contain;
+* a `response` object containing the raw response from the API
+* the returned object(s) as either an object, list or an iterable list
+
+### Single Object Responses
+
+In cases where we're creating or fetching a single resource the response will contain an object matching the name of the resource. For example;
+```typescript
+const { tag } = front.tags.create({ ... })
+```
+
+### List Responses
+
+For lists of resources, we return a `page` containing `items`. 
+In some cases the Front API only returns a single page of resources (no pagination), but in others you can use the iterator to page through all results;
+
+```typescript
+const { page } = await front.accounts.list()
+for (const account of page.items) {
+  await doSomething(account)
+}
+```
+
+## Resource Classes
+
+Resources are returned as instances of classes, such as a `Teammate` or `Message`. This allows us to support class instance methods such as `.update()` or .delete() methods on class resources. 
+For example, we can fetch a tag then update it;
+
+```typescript
+// Fetch the tag
+let { tag } = await front.tags.get(tagId)
+
+// Then we can update it either using the class instance
+tag = await tag.update({ highlight: "red" })
+// or using the same `front.tags...` method
+tag = await front.tags.update(tagId, { highlight: "red" })
 ```
 
 ## API Reference
@@ -84,58 +119,50 @@ const front = new Front({ apiKey: 'your-api-key' });
 
 ```typescript
 // Get details about the current API token
-const tokenInfo = await front.me();
-console.log('Company name:', tokenInfo.name); // Company name
-console.log('Company ID:', tokenInfo.id); // Company ID (e.g., 'cmp_123')
+const tokenInfo = await front.me()
+console.log("Company name:", tokenInfo.name) // Company name
+console.log("Company ID:", tokenInfo.id) // Company ID (e.g., 'cmp_123')
 ```
 
 ### Conversations
 
 ```typescript
 // List conversations
-const conversations = await front.conversations.list({
+const { page: conversations } = await front.conversations.list({
+  q: "status:unassigned"
   limit: 50,
-  q: 'status:unassigned'
-});
+})
 
 // Fetch a specific conversation
-const conversation = await front.conversations.fetch('cnv_123');
+const { conversation } = await front.conversations.fetch("cnv_123")
 
 // Update a conversation
-await front.conversations.update('cnv_123', {
-  status: 'archived'
-});
+await front.conversations.update("cnv_123", {
+  status: "archived"
+})
 
 // Get conversation messages
-const messages = await front.conversations.getMessages('cnv_123');
+const { page: messages } = await front.conversations.listMessages("cnv_123")
 
 // Get conversation events
-const events = await front.conversations.getEvents('cnv_123');
+const { page: events } = await front.conversations.listEvents("cnv_123")
 ```
 
 ### Teammates
 
 ```typescript
 // List all teammates
-const teammates = await front.teammates.list();
+const { page: teammates } = await front.teammates.list()
 
 // Fetch a specific teammate
-const teammate = await front.teammates.fetch('tea_123');
+const { teammate } = await front.teammates.fetch("tea_123")
 
 // Update a teammate
-await front.teammates.update('tea_123', {
-  first_name: 'John',
-  last_name: 'Doe',
+await front.teammates.update("tea_123", {
+  first_name: "John",
+  last_name: "Doe",
   is_available: true
-});
-
-// Get teammate's inboxes
-const inboxes = await front.teammates.getInboxes('tea_123');
-
-// Get teammate's conversations
-const conversations = await front.teammates.getConversations('tea_123', {
-  limit: 10
-});
+})
 ```
 
 ### Drafts
@@ -144,163 +171,23 @@ The drafts API allows you to create, edit, list, and delete draft messages. Draf
 
 ```typescript
 // Create a new draft in a channel (starts a new conversation)
-const newDraft = await front.drafts.create('cha_123', {
-  body: 'This is a new draft message',
-  subject: 'Draft Subject',
-  to: ['customer@example.com'],
-  cc: ['manager@company.com'],
-  author_id: 'tea_123',
-  mode: 'private', // 'private' or 'shared'
+const { draft } = await front.drafts.create("cha_123", {
+  body: "This is a new draft message",
+  subject: "Draft Subject",
+  to: ["customer@example.com"],
+  cc: ["manager@company.com"],
+  author_id: "tea_123",
+  mode: "private", // 'private' or 'shared'
   should_add_default_signature: true
-});
+})
 
 // Create a draft reply to an existing conversation
-const replyDraft = await front.drafts.createReply('cnv_123', {
-  body: 'This is a draft reply',
-  channel_id: 'cha_123',
-  author_id: 'tea_123',
-  mode: 'shared'
-});
-
-// List drafts in a conversation
-const drafts = await front.drafts.list('cnv_123', {
-  limit: 10
-});
-
-// Edit/update a draft
-const updatedDraft = await front.drafts.edit('msg_123', {
-  body: 'Updated draft content',
-  subject: 'Updated Subject',
-  channel_id: 'cha_123',
-  version: 'draft-version-token', // Required for safe updates
-  mode: 'shared'
-});
-
-// Delete a draft
-await front.drafts.delete('msg_123', {
-  version: 'draft-version-token' // Required for safe deletion
-});
-```
-
-**Important Notes about Drafts:**
-- The `version` field is required for editing and deleting drafts to ensure safe concurrent operations
-- Draft modes: `private` (visible to author only) or `shared` (visible to all teammates with access)
-- When creating drafts in channels, you're starting a new conversation
-- When creating draft replies, you're adding to an existing conversation
-- Attachments can be included when creating drafts using base64-encoded data
-
-## OAuth Token Management
-
-When using OAuth, the SDK provides several utilities for token management:
-
-```typescript
-// Check if using OAuth
-const isOAuth = front.isUsingOAuth();
-
-// Get OAuth manager for advanced operations
-const oauthManager = front.getOAuthManager();
-if (oauthManager) {
-  // Force token refresh
-  const newToken = oauthManager.getAccessToken();
-}
-
-// Update OAuth configuration (e.g., after manual token refresh)
-front.updateOAuthConfig({
-  accessToken: 'new-access-token',
-  refreshToken: 'new-refresh-token',
-});
-```
-
-### Token Refresh Callback
-
-The `onTokenRefresh` callback is crucial for OAuth implementations - it allows the SDK to notify your application when tokens are automatically refreshed, so you can save the updated tokens to your database or storage system.
-
-**Example with database storage:**
-```typescript
-// Function to save tokens to your database
-async function saveTokensToDatabase(userId: string, tokens: OAuthTokens) {
-  await db.users.update(userId, {
-    frontAccessToken: tokens.access_token,
-    frontRefreshToken: tokens.refresh_token,
-    updatedAt: new Date()
-  });
-}
-
-const front = new Front({
-  oauth: {
-    clientId: 'your-client-id',
-    clientSecret: 'your-client-secret',
-    accessToken: 'current-access-token',
-    refreshToken: 'current-refresh-token',
-    
-    // SDK calls this whenever tokens are refreshed
-    onTokenRefresh: async (tokens) => {
-      console.log('Front SDK refreshed tokens, saving to database...');
-      await saveTokensToDatabase(currentUserId, tokens);
-      console.log('Tokens saved successfully');
-    }
-  }
-});
-
-// When any API call triggers a token refresh, your callback will be called
-const conversations = await front.conversations.list(); // May trigger refresh + callback
-```
-
-### Concurrent Token Refresh Protection
-
-The SDK uses an internal `refreshPromise` mechanism to prevent multiple simultaneous token refresh attempts. This ensures that if multiple API calls happen simultaneously when a token is expired, only one refresh request is made to the OAuth server, and your `onTokenRefresh` callback is only called once.
-
-**How it works:**
-- When the first API call detects an expired token, it starts the refresh process
-- Any subsequent API calls that also detect the expired token will wait for the same refresh promise to complete
-- Once the refresh is complete, `onTokenRefresh` is called once with the new tokens
-- All waiting calls then proceed with the refreshed token
-
-**Practical Example:**
-```typescript
-let refreshCount = 0;
-
-const front = new Front({
-  oauth: {
-    clientId: 'your-client-id',
-    clientSecret: 'your-client-secret',
-    accessToken: 'expired-token',
-    refreshToken: 'your-refresh-token',
-    onTokenRefresh: async (tokens) => {
-      refreshCount++;
-      console.log(`Token refresh #${refreshCount}:`, tokens);
-      await saveTokensToDatabase(currentUserId, tokens);
-    }
-  }
-});
-
-// These calls happen simultaneously when token is expired
-// Only ONE refresh request will be made, callback called once
-const [conversations, teammates, accounts] = await Promise.all([
-  front.conversations.list(),  // Triggers token refresh
-  front.teammates.list(),      // Waits for existing refresh
-  front.accounts.list()        // Waits for existing refresh
-]);
-
-console.log(`Refresh count: ${refreshCount}`); // Will be 1, not 3
-```
-
-This prevents rate limiting issues with the OAuth provider and ensures your database isn't hit with duplicate token updates.
-
-## Configuration
-
-```typescript
-const front = new Front({
-  apiKey: 'your-api-key', // For API key auth
-  baseUrl: 'https://api2.frontapp.com', // optional, defaults to Front's API
-  oauth: { // For OAuth auth
-    clientId: 'your-client-id',
-    clientSecret: 'your-client-secret',
-    accessToken: 'current-access-token',
-    refreshToken: 'current-refresh-token',
-    onTokenRefresh: async (tokens) => { /* save tokens */ }
-  }
-});
+const { draft: reply } = await front.drafts.createReply("cnv_123", {
+  body: "This is a draft reply",
+  channel_id: "cha_123",
+  author_id: "tea_123",
+  mode: "shared"
+})
 ```
 
 ## Error Handling
@@ -309,11 +196,13 @@ The SDK throws structured errors with helpful information:
 
 ```typescript
 try {
-  const conversation = await front.conversations.fetch('invalid-id');
+  const { conversation } = await front.conversations.fetch("invalid-id")
 } catch (error) {
-  console.error('Status:', error.status);
-  console.error('Message:', error.message);
-  console.error('Code:', error.code);
+  if (error instanceof FrontError) {
+    console.error("Status:", error.status)
+    console.error("Message:", error.message)
+    console.error("Code:", error.code)
+  }
 }
 ```
 
@@ -322,14 +211,22 @@ try {
 The SDK is built with TypeScript and provides full type definitions:
 
 ```typescript
-import { Front, Conversation, Teammate } from '@dugjason/front-node';
+import { Front, type Account, type Contact } from "@dugjason/front-node"
 
-const front = new Front({ apiKey: 'your-api-key' });
+const front = new Front({ apiKey: "your-api-key" })
 
 // Full type safety
-const conversation: Conversation = await front.conversations.fetch('cnv_123');
-const teammates: Teammate[] = (await front.teammates.list())._results;
+let account: Account
+let contacts: Array<Contact>
+const accountRes = await front.accounts.fetch("acc_123")
+account = accountRes.account
+const contactsRes = front.accounts.listContacts("acc_123")
+contacts = contactsRes.page.items
 ```
+
+## Pagination
+
+The SDK supports robust pagination using iterators. 
 
 ## Releases
 

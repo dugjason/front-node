@@ -1,5 +1,6 @@
+import { client } from "./generated/client.gen"
 import { OAuthTokenManager } from "./oauth"
-import type { FrontConfig, FrontError, RequestOptions } from "./types"
+import type { FrontConfig, FrontError } from "./types"
 
 // Rate limiting configuration
 const RATE_LIMIT_CONFIG = {
@@ -11,38 +12,60 @@ const RATE_LIMIT_CONFIG = {
 
 export class FrontClient {
   private apiKey?: string
-  private baseUrl: string
   private oauthManager?: OAuthTokenManager
 
   constructor(config: FrontConfig) {
-    this.baseUrl = config.baseUrl || "https://api2.frontapp.com"
-
-    if ("oauth" in config && config.oauth) {
+    client.setConfig({
+      baseUrl: config.baseUrl || "https://api2.frontapp.com",
+    })
+    if (config.apiKey) {
+      this.setApiKey(config.apiKey)
+    }
+    if (config.oauth) {
       // OAuth configuration provided
       this.oauthManager = new OAuthTokenManager(config.oauth)
-    } else {
-      // API key configuration
-      this.apiKey = config.apiKey || process.env.FRONT_API_KEY
-      if (!this.apiKey) {
-        throw new Error(
-          "API key is required when not using OAuth. Provide apiKey via config or FRONT_API_KEY environment variable.",
-        )
-      }
+    }
+
+    // Maybe exit here if no auth method is provided
+    if (!this.apiKey && !this.oauthManager) {
+      throw new Error("API key or OAuth configuration is required")
     }
   }
 
-  async request<T>(options: RequestOptions): Promise<T> {
+  private setApiKey(apiKey: string): void {
+    this.apiKey = apiKey
+    client.setConfig({
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+    })
+  }
+
+  async request<T>(options: {
+    method: string
+    path: string
+    body?: unknown
+    params?: Record<string, unknown>
+  }): Promise<T> {
     return this.requestWithRetry<T>(options, 0)
   }
 
   private async requestWithRetry<T>(
-    options: RequestOptions,
+    options: {
+      method: string
+      path: string
+      body?: unknown
+      params?: Record<string, unknown>
+    },
     retryCount: number,
   ): Promise<T> {
     const { method, path, body, params } = options
 
     // Build URL with query parameters
-    const url = new URL(path, this.baseUrl)
+    const baseUrl =
+      (client.getConfig() as { baseUrl?: string }).baseUrl ??
+      "https://api2.frontapp.com"
+    const url = new URL(path, baseUrl)
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
@@ -77,7 +100,7 @@ export class FrontClient {
     }
 
     try {
-      const response = await fetch(url.toString(), fetchOptions)
+      const response = await fetch(url, fetchOptions)
 
       // Handle token expiration for OAuth
       if (response.status === 401 && this.oauthManager) {

@@ -1,70 +1,69 @@
-import type { FrontClient } from "../client"
-import type { Conversation, ListResponse, PaginationParams } from "../types"
+import type { ConversationResponse } from "../generated/types.gen"
 
-export class Conversations {
-  constructor(private client: FrontClient) {}
+export class FrontConversation {
+  constructor(private data: ConversationResponse) {}
 
-  /**
-   * List conversations
-   */
-  async list(
-    params?: PaginationParams & { q?: string },
-  ): Promise<ListResponse<Conversation>> {
-    return this.client.get<ListResponse<Conversation>>("/conversations", params)
+  get id() {
+    return this.data.id ?? ""
   }
 
-  /**
-   * Fetch a specific conversation by ID
-   */
-  async fetch(conversationId: string): Promise<Conversation> {
-    return this.client.get<Conversation>(`/conversations/${conversationId}`)
+  get subject() {
+    return this.data.subject
   }
 
-  /**
-   * Update a conversation
-   */
-  async update(
-    conversationId: string,
-    data: Partial<Pick<Conversation, "assignee" | "status" | "tags">>,
-  ): Promise<Conversation> {
-    return this.client.patch<Conversation>(
-      `/conversations/${conversationId}`,
-      data,
-    )
+  get status() {
+    return this.data.status
   }
 
-  /**
-   * Get conversation messages
-   */
-  async getMessages(conversationId: string, params?: PaginationParams) {
-    return this.client.get(`/conversations/${conversationId}/messages`, params)
+  get statusId() {
+    return this.data.status_id
   }
 
-  /**
-   * Get conversation events
-   */
-  async getEvents(conversationId: string, params?: PaginationParams) {
-    return this.client.get(`/conversations/${conversationId}/events`, params)
+  get statusCategory() {
+    return this.data.status_category
   }
 
-  /**
-   * Get conversation comments
-   */
-  async getComments(conversationId: string, params?: PaginationParams) {
-    return this.client.get(`/conversations/${conversationId}/comments`, params)
+  get assignee() {
+    return this.data.assignee
   }
 
-  /**
-   * Get conversation followers
-   */
-  async getFollowers(conversationId: string) {
-    return this.client.get(`/conversations/${conversationId}/followers`)
+  get recipient() {
+    return this.data.recipient
   }
 
-  /**
-   * Get conversation inboxes
-   */
-  async getInboxes(conversationId: string) {
-    return this.client.get(`/conversations/${conversationId}/inboxes`)
+  get tags() {
+    return this.data.tags
+  }
+
+  get links() {
+    return this.data.links
+  }
+
+  get customFields() {
+    return this.data.custom_fields
+  }
+
+  get createdAt() {
+    return this.data.created_at
+  }
+
+  get waitingSince() {
+    return this.data.waiting_since
+  }
+
+  get isPrivate() {
+    return this.data.is_private
+  }
+
+  get scheduledReminders() {
+    return this.data.scheduled_reminders
+  }
+
+  get metadata() {
+    return this.data.metadata
+  }
+
+  toJSON(): ConversationResponse {
+    return this.data
   }
 }

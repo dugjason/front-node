@@ -1,73 +1,45 @@
-import type { FrontClient } from "../client"
-import type {
-  Account,
-  AccountContactsParams,
-  CreateAccountData,
-  ListResponse,
-  PaginationParams,
-  UpdateAccountData,
-} from "../types"
+import type { AccountResponse } from "../generated/types.gen"
 
-export class Accounts {
-  constructor(private client: FrontClient) {}
+export class FrontAccount {
+  constructor(private data: AccountResponse) {}
 
-  /**
-   * List all accounts
-   */
-  async list(params?: PaginationParams): Promise<ListResponse<Account>> {
-    return this.client.get<ListResponse<Account>>("/accounts", params)
+  get id() {
+    return this.data.id ?? ""
   }
 
-  /**
-   * Create a new account
-   */
-  async create(data: CreateAccountData): Promise<Account> {
-    return this.client.post<Account>("/accounts", data)
+  get name() {
+    return this.data.name
   }
 
-  /**
-   * Fetch a specific account by ID
-   */
-  async fetch(accountId: string): Promise<Account> {
-    return this.client.get<Account>(`/accounts/${accountId}`)
+  get logoUrl() {
+    return this.data.logo_url
   }
 
-  /**
-   * Update an account
-   */
-  async update(accountId: string, data: UpdateAccountData): Promise<Account> {
-    return this.client.patch<Account>(`/accounts/${accountId}`, data)
+  get description() {
+    return this.data.description
   }
 
-  /**
-   * Delete an account
-   */
-  async delete(accountId: string): Promise<void> {
-    return this.client.delete<void>(`/accounts/${accountId}`)
+  get domains() {
+    return this.data.domains
   }
 
-  /**
-   * List contacts associated with an account
-   */
-  async getContacts(accountId: string, params?: AccountContactsParams) {
-    return this.client.get(`/accounts/${accountId}/contacts`, params)
+  get externalId() {
+    return this.data.external_id
   }
 
-  /**
-   * Add a contact to an account
-   */
-  async addContact(accountId: string, contactIds: string[]): Promise<void> {
-    return this.client.post<void>(`/accounts/${accountId}/contacts`, {
-      contact_ids: contactIds,
-    })
+  get customFields() {
+    return this.data.custom_fields
   }
 
-  /**
-   * Remove a contact from an account
-   */
-  async removeContact(accountId: string, contactId: string): Promise<void> {
-    return this.client.delete<void>(
-      `/accounts/${accountId}/contacts/${contactId}`,
-    )
+  get createdAt() {
+    return this.data.created_at
+  }
+
+  get updatedAt() {
+    return this.data.updated_at
+  }
+
+  toJSON() {
+    return this.data
   }
 }
