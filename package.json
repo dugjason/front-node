@@ -1,0 +1,78 @@
+{
+  "name": "@dugjason/front-node",
+  "version": "0.0.1",
+  "description": "Modern Typescript SDK for the Front.com API",
+  "keywords": [
+    "api",
+    "customer-support",
+    "front",
+    "frontapp",
+    "sdk"
+  ],
+  "homepage": "https://github.com/dugjason/front-node#readme",
+  "bugs": {
+    "url": "https://github.com/dugjason/front-node/issues"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dugjason/front-node.git"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.cts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "bun test",
+    "build": "tsdown",
+    "check": "bun x oxfmt --check -c oxfmt.config.mjs . && bun x oxlint -c oxlint.config.mjs . && bun x tsc --noEmit && bun x ultracite check .",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "bun run build && changeset publish",
+    "prepack": "bun run build",
+    "generate": "bun ./scripts/build.ts && bun build",
+    "lint": "bun x oxlint -c oxlint.config.mjs .",
+    "fmt": "bun x oxfmt -c oxfmt.config.mjs .",
+    "fmt:check": "bun x oxfmt --check -c oxfmt.config.mjs .",
+    "fix": "bun x oxfmt --write -c oxfmt.config.mjs . && bun x oxlint -c oxlint.config.mjs --fix . && bun x ultracite fix .",
+    "ultracite": "bun x ultracite check ."
+  },
+  "devDependencies": {
+    "@arethetypeswrong/core": "0.18.2",
+    "@biomejs/biome": "2.4.15",
+    "@changesets/cli": "2.31.0",
+    "@types/bun": "1.3.14",
+    "@types/node": "25.9.1",
+    "lint-staged": "17.0.5",
+    "openapi-typescript": "7.13.0",
+    "oxfmt": "0.51.0",
+    "oxlint": "1.66.0",
+    "tsdown": "0.22.0",
+    "typescript": "6.0.3",
+    "ultracite": "7.7.0"
+  },
+  "lint-staged": {
+    "*.{js,ts,json,jsonc,md,mdx}": [
+      "ultracite fix"
+    ]
+  },
+  "packageManager": "bun@1.3.14"
+}
