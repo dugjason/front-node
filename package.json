@@ -67,7 +67,8 @@
     "oxlint": "1.66.0",
     "tsdown": "0.22.0",
     "typescript": "6.0.3",
-    "ultracite": "7.7.0"
+    "ultracite": "7.7.0",
+    "unrun": "0.3.0"
   },
   "lint-staged": {
     "*.{js,ts,json,jsonc,md,mdx}": [
