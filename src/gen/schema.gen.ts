@@ -2413,7 +2413,7 @@ export interface paths {
     head?: never;
     /**
      * Update message template
-     * @description Update message template
+     * @description Update a message template.
      *
      *     Required scope: `message_templates:write`
      */
@@ -3385,6 +3385,34 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/teammates/{teammate_id}/time_offs": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List teammate time offs
+     * @description List the time offs of a teammate.
+     *
+     *     Required scope: `time_off:read`
+     */
+    get: operations["list-teammate-time-offs"];
+    put?: never;
+    /**
+     * Create time off
+     * @description Create a time off for a teammate.
+     *
+     *     Required scope: `time_off:write`
+     */
+    post: operations["create-time-off"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/teams": {
     parameters: {
       query?: never;
@@ -3767,6 +3795,28 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/teams/{team_id}/time_offs": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List team time offs
+     * @description List the time offs of all teammates in a team.
+     *
+     *     Required scope: `time_off:read`
+     */
+    get: operations["list-team-time-offs"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/teams/{team_id}/views": {
     parameters: {
       query?: never;
@@ -3793,6 +3843,40 @@ export interface paths {
     options?: never;
     head?: never;
     patch?: never;
+    trace?: never;
+  };
+  "/time_offs/{time_off_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get time off
+     * @description Fetch a time off.
+     *
+     *     Required scope: `time_off:read`
+     */
+    get: operations["get-time-off"];
+    put?: never;
+    post?: never;
+    /**
+     * Delete time off
+     * @description Delete a time off.
+     *
+     *     Required scope: `time_off:delete`
+     */
+    delete: operations["delete-time-off"];
+    options?: never;
+    head?: never;
+    /**
+     * Update time off
+     * @description Update a time off.
+     *
+     *     Required scope: `time_off:write`
+     */
+    patch: operations["update-time-off"];
     trace?: never;
   };
   "/views": {
@@ -4109,6 +4193,8 @@ export interface components {
       columns: (
         | components["schemas"]["AnalyticsActivitiesColumns"]
         | components["schemas"]["AnalyticsActivitiesParameterizedColumns"]
+        | components["schemas"]["AnalyticsActivitiesSmartQAParameterizedColumn"]
+        | components["schemas"]["AnalyticsActivitiesNumericParameterizedColumn"]
       )[];
       /**
        * @description discriminator enum property added by openapi-typescript
@@ -4116,7 +4202,21 @@ export interface components {
        */
       type: "events";
     };
+    AnalyticsActivitiesNumericParameterizedColumn: {
+      /** @enum {string} */
+      name:
+        | "Time spent in Ticket Status"
+        | "Transitions to Ticket Status"
+        | "Custom Field"
+        | "Updated Custom Field";
+      id: number;
+    };
     AnalyticsActivitiesParameterizedColumns: string;
+    AnalyticsActivitiesSmartQAParameterizedColumn: {
+      /** @enum {string} */
+      name: "Smart QA score";
+      id: components["schemas"]["AnalyticsActivitiesSmartQAScoreParameters"];
+    };
     /** @enum {string} */
     AnalyticsActivitiesSmartQAScoreParameters:
       | "Comprehension"
@@ -5231,6 +5331,24 @@ export interface components {
           /** @description List of contact list ids. Can only be specified if access is set to 'contact_lists'. */
           contact_list_ids?: string[];
         };
+      };
+    };
+    CreateTimeOff: {
+      /** @description Name of the time off */
+      name: string;
+      /** @description Timestamp when the time off starts (in seconds) */
+      start_at: number;
+      /** @description Timestamp when the time off ends (in seconds), or null if open-ended */
+      end_at?: number | null;
+      auto_responder?: {
+        /** @description The auto-reply message body */
+        body?: string;
+        /** @description Whether the auto-responder is enabled */
+        is_enabled?: boolean;
+        /** @description Whether the auto-responder only replies to known contacts */
+        is_contacts_only?: boolean;
+        /** @description List of channel IDs the auto-responder applies to */
+        channel_ids?: components["schemas"]["ResourceID"][];
       };
     };
     CreateView: {
@@ -7006,16 +7124,102 @@ export interface components {
        * @description Type of the teammate, normal teammates are denoted as "user", while visitors are denoted as "visitor".
        *     Bot users are denoted by their parent resource type.
        *     The following bot types are available:
-       *       * rule: acting on behalf of a Rule, author of comments and drafts
-       *       * macro: acting on behalf of a Macro, author of comments and drafts
-       *       * API: acting on behalf of OAuth clients
+       *       * ai: acting on behalf of an AI
+       *       * api: acting on behalf of OAuth clients
+       *       * application: acting on behalf of an Application
+       *       * bulk_reply: acting on behalf of a Bulk Reply
+       *       * csat: used for authoring CSAT response comments
        *       * integration: acting on behalf of an Integration
-       *       * CSAT: used for authoring CSAT response comments
+       *       * macro: acting on behalf of a Macro, author of comments and drafts
+       *       * rule: acting on behalf of a Rule, author of comments and drafts
+       *       * smart_csat: acting on behalf of a Smart CSAT
        * @enum {string}
        */
-      type: "user" | "visitor" | "rule" | "macro" | "API" | "integration" | "CSAT";
+      type:
+        | "user"
+        | "visitor"
+        | "ai"
+        | "api"
+        | "application"
+        | "bulk_reply"
+        | "csat"
+        | "integration"
+        | "macro"
+        | "rule"
+        | "smart_csat";
       /** @description Custom fields for this teammate */
       custom_fields: components["schemas"]["CustomFieldParameter"];
+    };
+    TimeOffResponse: {
+      _links: {
+        /**
+         * @description Link to the time off resource
+         * @example https://yourCompany.api.frontapp.com/time_offs/vcr_1bri
+         */
+        self?: string;
+        related?: {
+          /**
+           * @description Link to the teammate this time off belongs to
+           * @example https://yourCompany.api.frontapp.com/teammates/tea_1bri
+           */
+          teammate?: string;
+        };
+      };
+      /**
+       * @description Unique identifier of the time off
+       * @example vcr_1bri
+       */
+      id: string;
+      /**
+       * @description Name of the time off
+       * @example Out of office
+       */
+      name: string;
+      /**
+       * @description Timestamp when the time off starts
+       * @example 1606943265.298
+       */
+      start_at: number;
+      /**
+       * @description Timestamp when the time off ends, or null if open-ended
+       * @example 1607548065.298
+       */
+      end_at?: number | null;
+      /**
+       * @description Timestamp when the time off was created
+       * @example 1606943265.298
+       */
+      created_at?: number;
+      /**
+       * @description Timestamp when the time off was last updated
+       * @example 1606943265.298
+       */
+      updated_at?: number;
+      auto_responder: {
+        /**
+         * @description Whether the auto-responder is enabled
+         * @example true
+         */
+        is_enabled?: boolean;
+        /**
+         * @description List of channel IDs the auto-responder applies to
+         * @example [
+         *       "cha_1bri",
+         *       "cha_2bri"
+         *     ]
+         */
+        channel_ids?: string[];
+        /**
+         * @description Whether the auto-responder only replies to known contacts
+         * @example false
+         */
+        is_contacts_only?: boolean;
+        /**
+         * @description The auto-reply message body
+         * @example Thanks for reaching out, I will reply when I am back.
+         */
+        body?: string;
+      };
     };
     UpdateChannel: {
       /**
@@ -7208,6 +7412,24 @@ export interface components {
         };
       };
     };
+    UpdateTimeOff: {
+      /** @description Name of the time off */
+      name?: string;
+      /** @description Timestamp when the time off starts (in seconds) */
+      start_at?: number;
+      /** @description Timestamp when the time off ends (in seconds), or null to clear it */
+      end_at?: number | null;
+      auto_responder?: {
+        /** @description The auto-reply message body */
+        body?: string;
+        /** @description Whether the auto-responder is enabled */
+        is_enabled?: boolean;
+        /** @description Whether the auto-responder only replies to known contacts */
+        is_contacts_only?: boolean;
+        /** @description List of channel IDs the auto-responder applies to */
+        channel_ids?: components["schemas"]["ResourceID"][];
+      };
+    };
     UpdateView: {
       /** @description Name of the view */
       name?: string;
@@ -7230,7 +7452,9 @@ export interface components {
   responses: {
     /** @description Array of message templates */
     listOfCannedAnswers: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": {
           _pagination?: {
@@ -7253,7 +7477,9 @@ export interface components {
     };
     /** @description Array of message template folders */
     listOfCannedAnswerFolders: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": {
           _pagination?: {
@@ -7276,7 +7502,9 @@ export interface components {
     };
     /** @description Array of signatures */
     listOfSignatures: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": {
           _pagination?: {
@@ -7299,7 +7527,9 @@ export interface components {
     };
     /** @description Array of Inboxes */
     listOfInboxes: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": {
           _links?: {
@@ -7315,7 +7545,9 @@ export interface components {
     };
     /** @description Array of Comments */
     listOfComments: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": {
           _links?: {
@@ -7331,7 +7563,9 @@ export interface components {
     };
     /** @description Array of teams */
     listOfTeams: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": {
           _links?: {
@@ -7347,7 +7581,9 @@ export interface components {
     };
     /** @description Array of teammates */
     listOfTeammates: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": {
           _links?: {
@@ -7363,7 +7599,9 @@ export interface components {
     };
     /** @description Array of teammate groups */
     listOfTeammateGroups: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": {
           _links?: {
@@ -7377,9 +7615,36 @@ export interface components {
         };
       };
     };
+    /** @description Array of time offs */
+    listOfTimeOffs: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        "application/json": {
+          _pagination?: {
+            /**
+             * @description Link to next [page of results](https://dev.frontapp.com/docs/pagination)
+             * @example https://yourCompany.api.frontapp.com/teams/tim_abc123/time_offs?page_token=9fa92a7f385fd7be43f7153055b30e6d
+             */
+            next?: string | null;
+          };
+          _links?: {
+            /**
+             * @description Link to resource
+             * @example https://yourCompany.api.frontapp.com/teams/tim_abc123/time_offs
+             */
+            self?: string;
+          };
+          _results?: components["schemas"]["TimeOffResponse"][];
+        };
+      };
+    };
     /** @description Array of Shifts */
     listOfShifts: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": {
           _links?: {
@@ -7395,7 +7660,9 @@ export interface components {
     };
     /** @description Array of contacts */
     listOfContacts: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": {
           _pagination?: {
@@ -7418,7 +7685,9 @@ export interface components {
     };
     /** @description Array of accounts */
     listOfAccounts: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": {
           _pagination?: {
@@ -7441,7 +7710,9 @@ export interface components {
     };
     /** @description Array of contact lists */
     listOfContactLists: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": {
           _links?: {
@@ -7457,7 +7728,9 @@ export interface components {
     };
     /** @description Array of contact notes */
     listOfContactNotes: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": {
           _links?: {
@@ -7473,7 +7746,9 @@ export interface components {
     };
     /** @description Array of messages */
     listOfMessages: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": {
           _pagination?: {
@@ -7496,7 +7771,9 @@ export interface components {
     };
     /** @description Array of seen receipts */
     listOfSeenReceipts: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": {
           _pagination?: {
@@ -7519,7 +7796,9 @@ export interface components {
     };
     /** @description Array of conversations */
     listOfConversations: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": {
           _pagination?: {
@@ -7542,7 +7821,9 @@ export interface components {
     };
     /** @description Array of conversation search results */
     listOfConversationSearchResults: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": {
           _pagination?: {
@@ -7570,7 +7851,9 @@ export interface components {
     };
     /** @description Array of events */
     listOfEvents: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": {
           _pagination?: {
@@ -7593,7 +7876,9 @@ export interface components {
     };
     /** @description Array of Roles */
     listOfRoles: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": {
           _links?: {
@@ -7606,7 +7891,9 @@ export interface components {
     };
     /** @description Array of Rules */
     listOfRules: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": {
           _links?: {
@@ -7622,7 +7909,9 @@ export interface components {
     };
     /** @description Array of Tags */
     listOfTags: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": {
           _links?: {
@@ -7638,7 +7927,9 @@ export interface components {
     };
     /** @description Array of ticket statuses */
     listOfStatuses: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": {
           _links?: {
@@ -7654,7 +7945,9 @@ export interface components {
     };
     /** @description Array of Links */
     listOfLinks: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": {
           _pagination?: {
@@ -7677,7 +7970,9 @@ export interface components {
     };
     /** @description Array of Channels */
     listOfChannels: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": {
           _links?: {
@@ -7693,7 +7988,9 @@ export interface components {
     };
     /** @description Array of Custom Fields */
     listOfCustomFields: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": {
           _links?: {
@@ -7709,7 +8006,9 @@ export interface components {
     };
     /** @description Array of knowledge bases */
     listOfKnowledgeBases: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": {
           _links?: {
@@ -7725,7 +8024,9 @@ export interface components {
     };
     /** @description Array of knowledge base categories */
     listOfKnowledgeBaseCategories: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": {
           _pagination?: {
@@ -7748,7 +8049,9 @@ export interface components {
     };
     /** @description Array of knowledge base articles */
     listOfKnowledgeBaseArticles: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": {
           _pagination?: {
@@ -7771,7 +8074,9 @@ export interface components {
     };
     /** @description Array of views */
     listOfViews: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": {
           _pagination?: {
@@ -7794,63 +8099,81 @@ export interface components {
     };
     /** @description An Account */
     account: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": components["schemas"]["AccountResponse"];
       };
     };
     /** @description A contact */
     contact: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": components["schemas"]["ContactResponse"];
       };
     };
     /** @description A message */
     message: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": components["schemas"]["MessageResponse"];
       };
     };
     /** @description A conversation */
     conversation: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": components["schemas"]["ConversationResponse"];
       };
     };
     /** @description A role */
     role: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": components["schemas"]["RoleResponse"];
       };
     };
     /** @description A rule */
     rule: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": components["schemas"]["RuleResponse"];
       };
     };
     /** @description A tag */
     tag: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": components["schemas"]["TagResponse"];
       };
     };
     /** @description A ticket status */
     status: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": components["schemas"]["StatusResponse"];
       };
     };
     /** @description A link */
     link: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": components["schemas"]["LinkResponse"];
       };
@@ -7870,147 +8193,198 @@ export interface components {
     };
     /** @description API Token details */
     identity: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": components["schemas"]["IdentityResponse"];
       };
     };
     /** @description A message template */
     cannedAnswer: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": components["schemas"]["MessageTemplateResponse"];
       };
     };
     /** @description A message template folder */
     cannedAnswerFolder: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": components["schemas"]["MessageTemplateFolderResponse"];
       };
     };
     /** @description A signature */
     signature: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": components["schemas"]["SignatureResponse"];
       };
     };
     /** @description A contact note */
     contactNote: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": components["schemas"]["ContactNoteResponses"];
       };
     };
     /** @description A channel */
     channel: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": components["schemas"]["ChannelResponse"];
       };
     };
     /** @description A comment */
     comment: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": components["schemas"]["CommentResponse"];
       };
     };
     /** @description An inbox */
     inbox: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": components["schemas"]["InboxResponse"];
       };
     };
     /** @description A shift */
     shift: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": components["schemas"]["ShiftResponse"];
       };
     };
+    /** @description A time off */
+    time_off: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        "application/json": components["schemas"]["TimeOffResponse"];
+      };
+    };
     /** @description A team */
     team: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": components["schemas"]["TeamResponse"];
       };
     };
     /** @description A teammate */
     teammate: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": components["schemas"]["TeammateResponse"];
       };
     };
     /** @description A teammate group */
     teammateGroup: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": components["schemas"]["TeammateGroupResponse"];
       };
     };
     /** @description An event */
     event: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": components["schemas"]["EventResponse"];
       };
     };
     /** @description A knowledge base with content */
     knowledgeBase: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": components["schemas"]["KnowledgeBaseResponse"];
       };
     };
     /** @description A knowledge base */
     knowledgeBaseSlim: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": components["schemas"]["KnowledgeBaseSlimResponse"];
       };
     };
     /** @description A knowledge base category with content */
     knowledgeBaseCategory: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": components["schemas"]["KnowledgeBaseCategoryResponse"];
       };
     };
     /** @description A knowledge base category */
     knowledgeBaseCategorySlim: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": components["schemas"]["KnowledgeBaseCategorySlimResponse"];
       };
     };
     /** @description A knowledge base article with content */
     knowledgeBaseArticle: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": components["schemas"]["KnowledgeBaseArticleResponse"];
       };
     };
     /** @description A knowledge base article */
     knowledgeBaseArticleSlim: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": components["schemas"]["KnowledgeBaseArticleSlimResponse"];
       };
     };
     /** @description A view */
     view: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": components["schemas"]["SharedViewResponse"];
       };
     };
     /** @description An accepted response acknowledging your request to create a message */
     acceptedMessage: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": {
           /**
@@ -8029,7 +8403,9 @@ export interface components {
     };
     /** @description A message template folder accepted for deletion */
     acceptedCannedAnswerFolderDeletion: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": {
           /**
@@ -8047,7 +8423,9 @@ export interface components {
     };
     /** @description Request accepted */
     accepted: {
-      headers: Record<string, unknown>;
+      headers: {
+        [name: string]: unknown;
+      };
       content: {
         "application/json": {
           /**
@@ -8064,6 +8442,8 @@ export interface components {
     activityQuery: string;
     /** @description [Search query object](https://dev.frontapp.com/docs/query-object-q) with the optional properties `updated_after` and `updated_before`, whose value should be a timestamp in seconds with up to 3 decimal places. */
     cardQuery: string;
+    /** @description [Search query object](https://dev.frontapp.com/docs/query-object-q) with the optional properties `active_from` and `active_until`, whose value should be a timestamp in seconds with up to 3 decimal places. */
+    timeOffQuery: string;
     /** @description [Search query object](https://dev.frontapp.com/docs/query-object-q) with a property `statuses`, whose value should be a list of conversation statuses (`assigned`, `unassigned`, `archived`, or `trashed`). If ticketing is enabled, this endpoint accepts either `status_categories` (`open`, `waiting`, `resolved`) or `status_ids` as an alternative. */
     conversationQuery: string;
     /** @description [Search query object](https://dev.frontapp.com/docs/query-object-q) with a property `types`, whose value should be a list of link types. Links created via the API have type `web` and links created by application objects have type `app_<uid>`, matching the app UID where the object is configured. There are also types `jira`, `asana`, `monday`, `trello`, and `github`, which correspond to the integrations built by Front. */
@@ -8177,7 +8557,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -8243,7 +8625,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -8266,7 +8650,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -8286,7 +8672,9 @@ export interface operations {
     responses: {
       /** @description An analytics export. */
       201: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": components["schemas"]["AnalyticsExportResponse"];
         };
@@ -8307,7 +8695,9 @@ export interface operations {
     responses: {
       /** @description An analytics export. */
       200: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": components["schemas"]["AnalyticsExportResponse"];
         };
@@ -8329,7 +8719,9 @@ export interface operations {
     responses: {
       /** @description An analytics report. */
       201: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": components["schemas"]["AnalyticsReportResponse"];
         };
@@ -8350,7 +8742,9 @@ export interface operations {
     responses: {
       /** @description An analytics report. */
       200: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content: {
           "application/json": components["schemas"]["AnalyticsReportResponse"];
         };
@@ -8375,7 +8769,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -8426,7 +8822,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -8612,7 +9010,9 @@ export interface operations {
       200: components["responses"]["listOfStatuses"];
       /** @description Ticketing is not enabled, therefore, there are no ticket statuses. */
       404: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -8697,7 +9097,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -8716,7 +9118,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -8759,7 +9163,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -8782,7 +9188,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -8814,7 +9222,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -8833,7 +9243,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -8876,7 +9288,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -8899,7 +9313,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -9000,7 +9416,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -9023,7 +9441,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -9068,7 +9488,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -9091,7 +9513,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -9216,7 +9640,9 @@ export interface operations {
       200: components["responses"]["conversation"];
       /** @description If the conversation has been merged, the response redirects you to the merged conversation. */
       301: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -9235,22 +9661,30 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
       /** @description Conversation must have status "trashed" before it can be permanently deleted */
       400: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
       /** @description Token lacks the required `conversations:delete` scope */
       403: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
       /** @description Conversation not found */
       404: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -9273,17 +9707,23 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
       /** @description If the conversation has been merged, the response redirects you to the merged conversation. */
       301: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
       /** @description Invalid input, such as invalid custom fields */
       400: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -9306,12 +9746,16 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
       /** @description If the conversation has been merged, the response redirects you to the merged conversation. */
       301: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -9331,7 +9775,9 @@ export interface operations {
       200: components["responses"]["listOfComments"];
       /** @description If the conversation has been merged, the response redirects you to the merged conversation. */
       301: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -9355,7 +9801,9 @@ export interface operations {
       201: components["responses"]["comment"];
       /** @description If the conversation has been merged, the response redirects you to the merged conversation. */
       301: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -9375,7 +9823,9 @@ export interface operations {
       200: components["responses"]["listOfMessages"];
       /** @description If the conversation has been merged, the response redirects you to the merged conversation. */
       301: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -9399,7 +9849,9 @@ export interface operations {
       200: components["responses"]["message"];
       /** @description If the conversation has been merged, the response redirects you to the merged conversation. */
       301: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -9424,7 +9876,9 @@ export interface operations {
       200: components["responses"]["listOfEvents"];
       /** @description If the conversation has been merged, the response redirects you to the merged conversation. */
       301: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -9444,7 +9898,9 @@ export interface operations {
       200: components["responses"]["listOfTeammates"];
       /** @description If the conversation has been merged, the response redirects you to the merged conversation. */
       301: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -9473,12 +9929,16 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
       /** @description If the conversation has been merged, the response redirects you to the merged conversation. */
       301: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -9504,12 +9964,16 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
       /** @description If the conversation has been merged, the response redirects you to the merged conversation. */
       301: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -9529,7 +9993,9 @@ export interface operations {
       200: components["responses"]["listOfInboxes"];
       /** @description If the conversation has been merged, the response redirects you to the merged conversation. */
       301: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -9557,12 +10023,16 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
       /** @description If the conversation has been merged, the response redirects you to the merged conversation. */
       301: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -9588,12 +10058,16 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
       /** @description If the conversation has been merged, the response redirects you to the merged conversation. */
       301: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -9622,7 +10096,9 @@ export interface operations {
       200: components["responses"]["listOfMessages"];
       /** @description If the conversation has been merged, the response redirects you to the merged conversation. */
       301: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -9646,7 +10122,9 @@ export interface operations {
       202: components["responses"]["acceptedMessage"];
       /** @description If the conversation has been merged, the response redirects you to the merged conversation. */
       301: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -9669,12 +10147,16 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
       /** @description If the conversation has been merged, the response redirects you to the merged conversation. */
       301: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -9698,12 +10180,16 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
       /** @description If the conversation has been merged, the response redirects you to the merged conversation. */
       301: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -9727,12 +10213,16 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
       /** @description If the conversation has been merged, the response redirects you to the merged conversation. */
       301: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -9782,7 +10272,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -9934,7 +10426,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -10014,7 +10508,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -10038,7 +10534,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -10191,7 +10689,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -10609,7 +11109,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -10869,7 +11371,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -10884,12 +11388,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    /** @description Message template to update */
-    requestBody?: {
-      content: {
-        "application/json": components["schemas"]["UpdateMessageTemplate"];
-      };
-    };
+    requestBody?: never;
     responses: {
       200: components["responses"]["cannedAnswer"];
     };
@@ -10976,7 +11475,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -11071,7 +11572,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -11110,7 +11613,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -11134,7 +11639,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -11168,7 +11675,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -11260,7 +11769,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -11284,7 +11795,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -11403,7 +11916,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -11426,7 +11941,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -11465,7 +11982,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -11489,7 +12008,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -11528,7 +12049,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -11552,7 +12075,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -11591,7 +12116,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -11615,7 +12142,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -11677,7 +12206,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -11730,7 +12261,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -11768,7 +12301,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -12079,6 +12614,47 @@ export interface operations {
       201: components["responses"]["tag"];
     };
   };
+  "list-teammate-time-offs": {
+    parameters: {
+      query?: {
+        /** @description Max number of results per [page](https://dev.frontapp.com/docs/pagination) */
+        limit?: components["parameters"]["limit"];
+        /** @description Token to use to request the [next page](https://dev.frontapp.com/docs/pagination) */
+        page_token?: components["parameters"]["pageToken"];
+        /** @description [Search query object](https://dev.frontapp.com/docs/query-object-q) with the optional properties `active_from` and `active_until`, whose value should be a timestamp in seconds with up to 3 decimal places. */
+        q?: components["parameters"]["timeOffQuery"];
+      };
+      header?: never;
+      path: {
+        /** @description The teammate ID */
+        teammate_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: components["responses"]["listOfTimeOffs"];
+    };
+  };
+  "create-time-off": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The teammate ID. Alternatively, you can supply an email as a [resource alias](https://dev.frontapp.com/docs/resource-aliases-1). */
+        teammate_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateTimeOff"];
+      };
+    };
+    responses: {
+      201: components["responses"]["time_off"];
+    };
+  };
   "list-teams": {
     parameters: {
       query?: never;
@@ -12154,7 +12730,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -12192,7 +12770,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -12505,7 +13085,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -12529,9 +13111,33 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
+    };
+  };
+  "list-team-time-offs": {
+    parameters: {
+      query?: {
+        /** @description Max number of results per [page](https://dev.frontapp.com/docs/pagination) */
+        limit?: components["parameters"]["limit"];
+        /** @description Token to use to request the [next page](https://dev.frontapp.com/docs/pagination) */
+        page_token?: components["parameters"]["pageToken"];
+        /** @description [Search query object](https://dev.frontapp.com/docs/query-object-q) with the optional properties `active_from` and `active_until`, whose value should be a timestamp in seconds with up to 3 decimal places. */
+        q?: components["parameters"]["timeOffQuery"];
+      };
+      header?: never;
+      path: {
+        /** @description The team ID */
+        team_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: components["responses"]["listOfTimeOffs"];
     };
   };
   "list-team-views": {
@@ -12572,6 +13178,67 @@ export interface operations {
     };
     responses: {
       201: components["responses"]["view"];
+    };
+  };
+  "get-time-off": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The time off ID */
+        time_off_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: components["responses"]["time_off"];
+    };
+  };
+  "delete-time-off": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The time off ID */
+        time_off_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "update-time-off": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The time off ID */
+        time_off_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateTimeOff"];
+      };
+    };
+    responses: {
+      /** @description No content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
     };
   };
   "list-views": {
@@ -12625,7 +13292,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };
@@ -12651,7 +13320,9 @@ export interface operations {
     responses: {
       /** @description No content */
       204: {
-        headers: Record<string, unknown>;
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
       };
     };

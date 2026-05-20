@@ -3,5 +3,5 @@ import ultracite from "ultracite/oxfmt";
 
 export default defineConfig({
   extends: [ultracite],
-  ignorePatterns: ["**/biome.jsonc", "**/openapi-spec.json"],
+  ignorePatterns: ["**/biome.jsonc"],
 });

@@ -5,6 +5,12 @@ export default defineConfig({
   extends: [core],
   overrides: [
     {
+      files: ["src/gen/**/*.ts"],
+      rules: {
+        "typescript/consistent-indexed-object-style": "off",
+      },
+    },
+    {
       files: ["src/resource.ts"],
       rules: {
         "class-methods-use-this": "off",

@@ -48,7 +48,7 @@
     "version-packages": "changeset version",
     "release": "bun run build && changeset publish",
     "prepack": "bun run build",
-    "generate": "bun ./scripts/build.ts && bun build",
+    "generate": "bun ./scripts/build.ts && bun run build",
     "lint": "bun x oxlint -c oxlint.config.mjs .",
     "fmt": "bun x oxfmt -c oxfmt.config.mjs .",
     "fmt:check": "bun x oxfmt --check -c oxfmt.config.mjs .",
