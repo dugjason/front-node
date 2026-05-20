@@ -33,7 +33,7 @@ bun run changeset
 ```
 
 Merging to `main` opens or updates a version PR. Merging that version PR publishes
-to npm as `@dugjason/front-node`.
+to npm as `@dugjason/front-node` through npm trusted publishing.
 
 ## Custom `fetch`
 
