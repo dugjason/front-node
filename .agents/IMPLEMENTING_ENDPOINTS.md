@@ -53,7 +53,7 @@ Checklist-oriented notes for adding SDK coverage for more of the Front API. **So
 - **`src/front.ts`:** import plural class, add `readonly <name>: Front<Name>`, construct in constructor, extend the class docblock list.
 - **`src/index.ts`:** export the new classes and relevant types (responses, create/update bodies, query types if useful).
 
-## 7. Tests (`tests/*.test.ts`)
+## 7. Tests (`tests/client.test.ts`)
 
 - **Mock `fetch`** with a `Proxy` that records `Request[]` and branches on `method` + `url` (see existing tests).
 - Assert **URL** (full origin + path + query when relevant), **method**, **headers** (`Authorization: Bearer …`) where it matters.
