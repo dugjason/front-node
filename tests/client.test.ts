@@ -50,6 +50,30 @@ describe("Front", () => {
     expect(requests[0]?.method).toBe("GET");
     expect(requests[0]?.url).toBe("https://api2.frontapp.com/tags");
     expect(requests[0]?.headers.get("Authorization")).toBe("Bearer test-token");
+    expect(requests[0]?.headers.get("User-Agent")).toBe("@dugjason/front-node@0.0.1");
+  });
+
+  test("uses custom user agent when provided", async () => {
+    const requests: Request[] = [];
+    const mockFetch = new Proxy(fetch, {
+      apply: (_target, _thisArg, [input, init]: Parameters<typeof fetch>) => {
+        const req = input instanceof Request ? input : new Request(input, init);
+        requests.push(req);
+        return new Response(JSON.stringify({ _pagination: {}, _results: [] }), {
+          headers: { "Content-Type": "application/json" },
+          status: 200,
+        });
+      },
+    });
+    const front = new Front({
+      apiKey: "test-token",
+      fetch: mockFetch,
+      userAgent: "acme-front-client/1.2.3",
+    });
+
+    await front.tags.list();
+
+    expect(requests[0]?.headers.get("User-Agent")).toBe("acme-front-client/1.2.3");
   });
 
   test("tags.list forwards query params", async () => {
@@ -975,6 +999,7 @@ describe("Front", () => {
     const front = new Front({ apiKey: "test-token", fetch: mockFetch });
     const tag = await front.company.createTag({
       highlight: "grey",
+      is_visible_in_conversation_lists: true,
       name: "New",
     });
     expect(tag.id).toBe("tag_new");
@@ -1518,6 +1543,7 @@ describe("Front namespaces (smoke)", () => {
     expect(new Uint8Array(await res.arrayBuffer())).toEqual(new Uint8Array([9, 9]));
     expect(requests[0]?.method).toBe("GET");
     expect(requests[0]?.url).toBe("https://api2.frontapp.com/download/att_lnk_1");
+    expect(requests[0]?.headers.get("User-Agent")).toBe("@dugjason/front-node@0.0.1");
   });
 
   test("drafts.edit PATCHes /drafts/{message_id}/ with trailing slash", async () => {

@@ -16,6 +16,16 @@ import { Front } from "@dugjason/front-node";
 const front = new Front({ apiKey: process.env.FRONT_API_TOKEN });
 ```
 
+By default, requests include `User-Agent: @dugjason/front-node@<version>`. You can override it at
+client initialization time:
+
+```ts
+const front = new Front({
+  apiKey: process.env.FRONT_API_TOKEN,
+  userAgent: "my-app/1.0.0",
+});
+```
+
 ## Development
 
 ```bash
