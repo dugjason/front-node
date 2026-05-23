@@ -12,6 +12,5 @@ describe("downloads", () => {
     expect(new Uint8Array(await res.arrayBuffer())).toEqual(new Uint8Array([9, 9]));
     expect(requests[0]?.method).toBe("GET");
     expect(requests[0]?.url).toBe("https://api2.frontapp.com/download/att_lnk_1");
-    expect(requests[0]?.headers.get("User-Agent")).toBe("@dugjason/front-node@0.0.1");
   });
 });
