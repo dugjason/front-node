@@ -127,7 +127,7 @@ export class FrontBase {
       return undefined as TResult;
     }
     const parsed: unknown = JSON.parse(text);
-    return normalizeFrontResponse(parsed, this.baseUrl) as TResult;
+    return normalizeFrontResponse(parsed) as TResult;
   }
 
   /**

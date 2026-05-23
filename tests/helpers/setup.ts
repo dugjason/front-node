@@ -20,7 +20,10 @@ export const createMockClient = (
   const requests: Request[] = [];
   const mockFetch = new Proxy(fetch, {
     apply: (_target, _thisArg, [input, init]: Parameters<typeof fetch>) => {
-      const req = input instanceof Request ? input : new Request(input, init);
+      const req =
+        input instanceof Request
+          ? input
+          : new Request(typeof input === "string" ? input : input.href, init);
       requests.push(req);
       return handler(req);
     },
