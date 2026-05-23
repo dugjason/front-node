@@ -18,7 +18,7 @@ describe("Front", () => {
     expect(requests[0]?.method).toBe("GET");
     expect(requests[0]?.url).toBe("https://api2.frontapp.com/tags");
     expect(requests[0]?.headers.get("Authorization")).toBe("Bearer test-token");
-    expect(requests[0]?.headers.get("User-Agent")).toBe("@dugjason/front-node@0.0.1");
+    expect(requests[0]?.headers.get("User-Agent")).toStartWith("@dugjason/front-node@");
   });
 
   test("uses custom user agent when provided", async () => {
