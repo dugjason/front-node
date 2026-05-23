@@ -1,6 +1,6 @@
 {
   "name": "@dugjason/front-node",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Modern Typescript SDK for the Front.com API",
   "keywords": [
     "api",
