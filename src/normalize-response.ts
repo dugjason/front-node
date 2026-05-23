@@ -22,43 +22,33 @@ export type PaginationInfo = Record<string, unknown> & {
  * If `next` is not a URL or has no `page_token`, returns `next` unchanged.
  *
  * @param next Value of `_pagination.next` from the raw API.
- * @param baseUrl API origin (used to resolve relative `next` links).
  */
-export const pageTokenFromPaginationNextUrl = (
-  next: string | null | undefined,
-  baseUrl: string,
-): string | null | undefined => {
-  if (next === undefined || next === null) {
-    return null;
-  }
-  if (next === "") {
+export const pageTokenFromPaginationNextUrl = (next?: string | null): string | null | undefined => {
+  if (!next) {
     return null;
   }
   try {
-    const u = new URL(next, baseUrl);
+    const u = new URL(next);
     const token = u.searchParams.get("page_token");
     if (token !== null && token !== "") {
       return token;
     }
   } catch {
     // not a URL
+    return null;
   }
-  return next;
+  return null;
 };
 
 /**
- * Walk JSON from the Front API: rename `_pagination` → `pagination` and replace `pagination.next`
- * full URLs with the `page_token` query value. Recurses into objects and arrays.
+ * Rename `_pagination` → `pagination` and replace `pagination.next` full URLs with the
+ * `page_token` query value.
  *
  * @param value Parsed JSON body.
- * @param baseUrl Same origin as the client (`FrontBase` / `Front` `baseUrl`).
  */
-export const normalizeFrontResponse = <T>(value: T, baseUrl: string): T => {
-  if (value === null || typeof value !== "object") {
-    return value;
-  }
-  if (Array.isArray(value)) {
-    return value.map((item) => normalizeFrontResponse(item, baseUrl)) as T;
+export const normalizeFrontResponse = <T>(value: T): WithNormalizedPagination<T> => {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return value as WithNormalizedPagination<T>;
   }
   const input = value as Record<string, unknown>;
   const result: Record<string, unknown> = {};
@@ -68,13 +58,12 @@ export const normalizeFrontResponse = <T>(value: T, baseUrl: string): T => {
         const p = val as Record<string, unknown>;
         const nextRaw = p.next;
         const next =
-          typeof nextRaw === "string" ? pageTokenFromPaginationNextUrl(nextRaw, baseUrl) : nextRaw;
+          typeof nextRaw === "string" ? pageTokenFromPaginationNextUrl(nextRaw) : nextRaw;
         result.pagination = { ...p, next };
       }
       continue;
     }
-    result[key] =
-      val !== null && typeof val === "object" ? normalizeFrontResponse(val, baseUrl) : val;
+    result[key] = val;
   }
-  return result as T;
+  return result as WithNormalizedPagination<T>;
 };
