@@ -1,9 +1,0 @@
----
-"@dugjason/front-node": patch
----
-
-- Adds `front.conversations.listMessages(convId)` method
-- Updates client to set user-agent string
-  - can set custom UA when initializing client - `new Front({..., userAgent: "my-ua-string"})`
-- Refactor test suite
-- Update internal (Agent) docs
