@@ -1,5 +1,11 @@
 # @dugjason/front-node
 
+## 0.0.3
+
+### Patch Changes
+
+- d3f18a3: simplify pagination handling
+
 ## 0.0.2
 
 ### Patch Changes
