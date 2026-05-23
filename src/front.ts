@@ -49,6 +49,8 @@ export interface FrontOptions {
   baseUrl?: string;
   /** Use a custom `fetch` implementation (defaults to `globalThis.fetch`). */
   fetch?: typeof fetch;
+  /** Override the User-Agent header sent with every request. */
+  userAgent?: string;
 }
 
 /**
@@ -124,7 +126,7 @@ export class Front extends FrontBase {
    * @throws Error when no API token can be resolved.
    */
   constructor(options?: FrontOptions) {
-    const { apiKey, baseUrl, fetch: fetchOption } = options ?? {};
+    const { apiKey, baseUrl, fetch: fetchOption, userAgent } = options ?? {};
     const token = apiKey ?? resolveFrontApiToken();
     if (!token) {
       throw new Error(
@@ -135,6 +137,7 @@ export class Front extends FrontBase {
       apiKey: token,
       baseUrl: baseUrl ?? DEFAULT_BASE_URL,
       ...(fetchOption === undefined ? {} : { fetch: fetchOption }),
+      ...(userAgent === undefined ? {} : { userAgent }),
     });
     this.accounts = new FrontAccounts(this);
     this.analytics = new FrontAnalytics(this);

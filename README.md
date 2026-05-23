@@ -14,6 +14,8 @@ npm install @dugjason/front-node
 import { Front } from "@dugjason/front-node";
 
 const front = new Front({ apiKey: process.env.FRONT_API_TOKEN });
+
+const teammates = await front.teammates.list();
 ```
 
 ## Development

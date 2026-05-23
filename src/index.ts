@@ -70,6 +70,7 @@ export {
   type CreateConversation,
   FrontConversation,
   FrontConversations,
+  type ListConversationMessagesQuery,
   type OutboundReplyMessage,
   type ReplyDraft,
   type TagIds,

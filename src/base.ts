@@ -1,5 +1,8 @@
+import packageJson from "../package.json";
 import { FrontApiError } from "./errors";
 import { normalizeFrontResponse } from "./normalize-response";
+
+const DEFAULT_USER_AGENT = `${packageJson.name}@${packageJson.version}`;
 
 /** Options for {@link FrontBase}. */
 export interface FrontBaseOptions {
@@ -9,6 +12,8 @@ export interface FrontBaseOptions {
   baseUrl?: string;
   /** Override `fetch` (defaults to `globalThis.fetch`). */
   fetch?: typeof fetch;
+  /** User-Agent header value sent with each request. */
+  userAgent?: string;
 }
 
 const TRAILING_SLASH_AT_END = /\/$/u;
@@ -40,12 +45,14 @@ export class FrontBase {
   protected readonly apiKey: string;
   protected readonly baseUrl: string;
   protected readonly fetchImpl: typeof fetch;
+  protected readonly userAgent: string;
 
   /** @param options API token and optional overrides. */
   constructor(options: FrontBaseOptions) {
     this.apiKey = options.apiKey;
     this.baseUrl = options.baseUrl ?? "https://api2.frontapp.com";
     this.fetchImpl = options.fetch ?? globalThis.fetch.bind(globalThis);
+    this.userAgent = options.userAgent ?? DEFAULT_USER_AGENT;
   }
 
   protected buildUrl(path: string, query?: Record<string, string | undefined>): string {
@@ -92,6 +99,7 @@ export class FrontBase {
     const headers = new Headers({
       Accept: "application/json",
       Authorization: `Bearer ${this.apiKey}`,
+      "User-Agent": this.userAgent,
     });
     if (init?.body !== undefined) {
       headers.set("Content-Type", "application/json");
@@ -142,6 +150,7 @@ export class FrontBase {
     const headers = new Headers({
       Accept: "*/*",
       Authorization: `Bearer ${this.apiKey}`,
+      "User-Agent": this.userAgent,
     });
     if (init?.headers !== undefined) {
       for (const [key, value] of Object.entries(init.headers)) {

@@ -44,7 +44,7 @@ type SearchConversationsQuery = NonNullable<
 type ListConversationEventsQuery = NonNullable<
   operations["list-conversation-events"]["parameters"]["query"]
 >;
-type ListConversationMessagesQuery = NonNullable<
+export type ListConversationMessagesQuery = NonNullable<
   operations["list-conversation-messages"]["parameters"]["query"]
 >;
 
@@ -145,6 +145,19 @@ const queryFromListConversationMessages = (
     out.sort_order = String(q.sort_order);
   }
   return out;
+};
+
+const requestListConversationMessages = (
+  base: FrontBase,
+  conversationId: string,
+  query?: ListConversationMessagesQuery,
+): Promise<WithNormalizedPagination<ListConversationMessagesResponse>> => {
+  const path = FrontBase.expandPath("/conversations/{conversation_id}/messages", {
+    conversation_id: conversationId,
+  });
+  return base.requestJson<WithNormalizedPagination<ListConversationMessagesResponse>>("GET", path, {
+    query: queryFromListConversationMessages(query),
+  });
 };
 
 const queryFromAddConversationFollowers = (
@@ -572,14 +585,7 @@ export class FrontConversation extends FrontResource<ConversationResponse, Updat
   async listMessages(
     query?: ListConversationMessagesQuery,
   ): Promise<WithNormalizedPagination<ListConversationMessagesResponse>> {
-    const path = FrontBase.expandPath("/conversations/{conversation_id}/messages", {
-      conversation_id: this.id,
-    });
-    return await this.base.requestJson<WithNormalizedPagination<ListConversationMessagesResponse>>(
-      "GET",
-      path,
-      { query: queryFromListConversationMessages(query) },
-    );
+    return await requestListConversationMessages(this.base, this.id, query);
   }
 
   /**
@@ -720,6 +726,21 @@ export class FrontConversations {
       path,
       { query: queryFromSearchConversations(params) },
     );
+  }
+
+  /**
+   * List messages in a conversation (`GET /conversations/{conversation_id}/messages`).
+   *
+   * **Required scope:** `messages:read`
+   *
+   * @param conversationId Conversation id or supported [resource alias](https://dev.frontapp.com/docs/resource-aliases-1).
+   * @see https://dev.frontapp.com/reference/list-conversation-messages
+   */
+  async listMessages(
+    conversationId: string,
+    query?: ListConversationMessagesQuery,
+  ): Promise<WithNormalizedPagination<ListConversationMessagesResponse>> {
+    return await requestListConversationMessages(this.base, conversationId, query);
   }
 
   /**
