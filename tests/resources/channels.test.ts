@@ -11,6 +11,18 @@ describe("channels", () => {
     expect(requests[0]?.url).toBe("https://api2.frontapp.com/channels");
   });
 
+  test("channels.create POSTs /inboxes/{inbox_id}/channels", async () => {
+    const { front, requests } = createMockClient(() => jsonResponse(null, { status: 204 }));
+    await front.channels.create("inb_1", {
+      name: "Support",
+      send_as: "support@example.com",
+      type: "smtp",
+    });
+    expect(requests).toHaveLength(1);
+    expect(requests[0]?.method).toBe("POST");
+    expect(requests[0]?.url).toBe("https://api2.frontapp.com/inboxes/inb_1/channels");
+  });
+
   test("channels.get returns FrontChannel", async () => {
     const { front, requests } = createMockClient(() =>
       jsonResponse({

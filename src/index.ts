@@ -31,6 +31,7 @@ export {
 export { type AppEvent, FrontApplications } from "./resources/applications";
 export {
   type ChannelResponse,
+  type CreateChannel,
   type CreateDraft,
   type CustomMessage,
   FrontChannel,
@@ -82,7 +83,6 @@ export { FrontDownloads } from "./resources/downloads";
 export { FrontDrafts } from "./resources/drafts";
 export { FrontEvents } from "./resources/events";
 export {
-  type CreateChannel,
   type CreateInbox,
   FrontInbox,
   FrontInboxes,

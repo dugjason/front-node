@@ -123,7 +123,7 @@ export class Front extends FrontBase {
 
   /**
    * @param options API credentials and optional HTTP overrides. A token is required either here or via `FRONT_API_TOKEN`.
-   * @throws Error when no API token can be resolved.
+   * @throws {Error} when no API token can be resolved.
    */
   constructor(options?: FrontOptions) {
     const { apiKey, baseUrl, fetch: fetchOption, userAgent } = options ?? {};
