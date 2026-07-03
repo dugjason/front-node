@@ -1,8 +1,6 @@
 import { FrontBase } from "../base";
 import type { components, operations } from "../gen/schema.gen";
 import type { WithNormalizedPagination } from "../normalize-response";
-import type { CreateChannel } from "./channels";
-import { FrontChannels } from "./channels";
 
 export type InboxResponse = components["schemas"]["InboxResponse"];
 export type CreateInbox = components["schemas"]["CreateInbox"];
@@ -116,15 +114,6 @@ export class FrontInbox {
       "GET",
       path,
     );
-  }
-
-  /**
-   * Create a channel in this inbox (`POST /inboxes/{inbox_id}/channels`). The API returns `204`.
-   *
-   * **Required scope:** `channels:write`
-   */
-  async createChannel(body: CreateChannel): Promise<void> {
-    await new FrontChannels(this.base).create(this.id, body);
   }
 
   /**
