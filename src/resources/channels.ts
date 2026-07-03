@@ -101,7 +101,7 @@ export class FrontChannel extends FrontResource<ChannelResponse, UpdateChannel> 
   /**
    * The Front API does not expose `DELETE /channels/{channel_id}`.
    *
-   * @throws Error always — use the Front product or inbox channel management instead.
+   * @throws {Error} always — use the Front product or inbox channel management instead.
    */
   override delete(): Promise<void> {
     return Promise.reject(
