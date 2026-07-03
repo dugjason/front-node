@@ -1,10 +1,11 @@
 import { FrontBase } from "../base";
 import type { components, operations } from "../gen/schema.gen";
 import type { WithNormalizedPagination } from "../normalize-response";
+import type { CreateChannel } from "./channels";
+import { FrontChannels } from "./channels";
 
 export type InboxResponse = components["schemas"]["InboxResponse"];
 export type CreateInbox = components["schemas"]["CreateInbox"];
-export type CreateChannel = components["schemas"]["CreateChannel"];
 export type ImportMessage = components["schemas"]["ImportMessage"];
 export type TeammateIds = components["schemas"]["TeammateIds"];
 
@@ -123,10 +124,7 @@ export class FrontInbox {
    * **Required scope:** `channels:write`
    */
   async createChannel(body: CreateChannel): Promise<void> {
-    const path = FrontBase.expandPath("/inboxes/{inbox_id}/channels", {
-      inbox_id: this.id,
-    });
-    await this.base.requestJson<undefined>("POST", path, { body });
+    await new FrontChannels(this.base).create(this.id, body);
   }
 
   /**
@@ -215,6 +213,10 @@ export class FrontInboxes {
     this.base = base;
   }
 
+  private inbox(inboxId: string): FrontInbox {
+    return new FrontInbox(this.base, { id: inboxId });
+  }
+
   /**
    * List inboxes (`GET /inboxes`).
    *
@@ -262,5 +264,66 @@ export class FrontInboxes {
     });
     const data = await this.base.requestJson<InboxResponse>("GET", path);
     return new FrontInbox(this.base, data);
+  }
+
+  /**
+   * List channels in an inbox (`GET /inboxes/{inbox_id}/channels`).
+   *
+   * **Required scope:** `channels:read`
+   */
+  async listChannels(
+    inboxId: string,
+  ): Promise<WithNormalizedPagination<ListInboxChannelsResponse>> {
+    return await this.inbox(inboxId).listChannels();
+  }
+
+  /**
+   * List conversations in an inbox (`GET /inboxes/{inbox_id}/conversations`).
+   *
+   * **Required scope:** `conversations:read`
+   */
+  async listConversations(
+    inboxId: string,
+    query?: ListInboxConversationsQuery,
+  ): Promise<WithNormalizedPagination<ListInboxConversationsResponse>> {
+    return await this.inbox(inboxId).listConversations(query);
+  }
+
+  /**
+   * Import a message into an inbox (`POST /inboxes/{inbox_id}/imported_messages`).
+   *
+   * **Required scope:** `messages:write`
+   */
+  async importMessage(inboxId: string, body: ImportMessage): Promise<ImportInboxMessageResponse> {
+    return await this.inbox(inboxId).importMessage(body);
+  }
+
+  /**
+   * List teammates with access (`GET /inboxes/{inbox_id}/teammates`).
+   *
+   * **Required scope:** `teammates:read`
+   */
+  async listTeammateAccess(
+    inboxId: string,
+  ): Promise<WithNormalizedPagination<ListInboxAccessResponse>> {
+    return await this.inbox(inboxId).listTeammateAccess();
+  }
+
+  /**
+   * Add teammate access (`POST /inboxes/{inbox_id}/teammates`). The API returns `204`.
+   *
+   * **Required scope:** `inboxes:write`
+   */
+  async addTeammateAccess(inboxId: string, body: TeammateIds): Promise<void> {
+    await this.inbox(inboxId).addTeammateAccess(body);
+  }
+
+  /**
+   * Remove teammate access (`DELETE /inboxes/{inbox_id}/teammates`). The API returns `204`.
+   *
+   * **Required scope:** `inboxes:write`
+   */
+  async removeTeammateAccess(inboxId: string, body: TeammateIds): Promise<void> {
+    await this.inbox(inboxId).removeTeammateAccess(body);
   }
 }

@@ -4,6 +4,7 @@ import type { WithNormalizedPagination } from "../normalize-response";
 import { FrontResource } from "../resource";
 
 export type ChannelResponse = components["schemas"]["ChannelResponse"];
+export type CreateChannel = components["schemas"]["CreateChannel"];
 export type UpdateChannel = components["schemas"]["UpdateChannel"];
 export type CreateDraft = components["schemas"]["CreateDraft"];
 export type CustomMessage = components["schemas"]["CustomMessage"];
@@ -232,5 +233,19 @@ export class FrontChannels {
     });
     const data = await this.base.requestJson<ChannelResponse>("GET", path);
     return new FrontChannel(this.base, data);
+  }
+
+  /**
+   * Create a channel in an inbox (`POST /inboxes/{inbox_id}/channels`). The API returns `204`.
+   *
+   * **Required scope:** `channels:write`
+   *
+   * @see https://dev.frontapp.com/reference/post_inboxes-inbox-id-channels
+   */
+  async create(inboxId: string, body: CreateChannel): Promise<void> {
+    const path = FrontBase.expandPath("/inboxes/{inbox_id}/channels", {
+      inbox_id: inboxId,
+    });
+    await this.base.requestJson<undefined>("POST", path, { body });
   }
 }
