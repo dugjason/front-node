@@ -11,26 +11,36 @@ import type { FrontBase } from "./base";
  * @template TUpdate PATCH payload type (or equivalent) for {@link update} / {@link save}.
  */
 export abstract class FrontResource<TState extends { id: string; _links: unknown }, TUpdate> {
-  protected state: TState;
+  protected state!: TState;
   protected readonly base: FrontBase;
+  private stateLoaded: boolean;
+  private readonly resourceId: string | undefined;
 
   /**
    * @param base Shared HTTP client.
    * @param snapshot Initial resource JSON (deep-cloned).
    */
-  constructor(base: FrontBase, snapshot: TState) {
+  constructor(base: FrontBase, snapshot?: TState, resourceId?: string) {
     this.base = base;
-    this.state = structuredClone(snapshot);
+    this.stateLoaded = snapshot !== undefined;
+    if (snapshot !== undefined) {
+      this.state = structuredClone(snapshot);
+    }
+    this.resourceId = resourceId;
   }
 
   /** Resource id from the API (`id` field). */
   get id(): string {
-    return this.state.id;
+    const id = (this.stateLoaded ? this.state.id : undefined) ?? this.resourceId;
+    if (id === undefined) {
+      throw new Error("This resource operation requires an ID.");
+    }
+    return id;
   }
 
   /** HAL-style `_links` object from the API response. */
   get links(): TState["_links"] {
-    return this.state._links;
+    return this.requireState()._links;
   }
 
   /** Replace {@link links} on the in-memory copy (does not call the API by itself). */
@@ -40,21 +50,34 @@ export abstract class FrontResource<TState extends { id: string; _links: unknown
 
   /** Read-only view of the full API JSON for this resource. */
   get data(): Readonly<TState> {
-    return this.state;
+    return this.requireState();
   }
 
   /** Read a field using the API / schema property name. */
   protected pick<K extends keyof TState>(key: K): TState[K] {
-    return this.state[key];
+    return this.requireState()[key];
   }
 
   /** Assign one field immutably (API / schema property name). */
   protected assign<K extends keyof TState>(key: K, value: TState[K]): void {
-    this.state = { ...this.state, [key]: value };
+    this.state = { ...this.requireState(), [key]: value };
   }
 
   protected replaceState(next: TState): void {
     this.state = structuredClone(next);
+    this.stateLoaded = true;
+  }
+
+  /** Whether this instance currently has a response snapshot. */
+  protected hasState(): boolean {
+    return this.stateLoaded;
+  }
+
+  private requireState(): TState {
+    if (!this.stateLoaded) {
+      throw new Error("This resource operation requires fetched resource data.");
+    }
+    return this.state;
   }
 
   /** URL for this resource (GET / PATCH / DELETE on the entity). */
@@ -90,7 +113,9 @@ export abstract class FrontResource<TState extends { id: string; _links: unknown
     merge: (current: TState, body: TBody) => TState,
   ): Promise<void> {
     await this.base.requestJson<undefined>("PATCH", this.selfPath(), { body });
-    this.state = merge(this.state, body);
+    if (this.stateLoaded) {
+      this.state = merge(this.state, body);
+    }
   }
 
   /** PATCH where the API returns the full updated resource. */

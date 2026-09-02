@@ -3,7 +3,7 @@ import type { components, operations } from "../gen/schema.gen";
 import type { WithNormalizedPagination } from "../normalize-response";
 import { FrontResource } from "../resource";
 import type { CreateComment } from "./comments";
-import { FrontComment } from "./comments";
+import { FrontComments } from "./comments";
 
 export type ConversationResponse = components["schemas"]["ConversationResponse"];
 export type UpdateConversation = components["schemas"]["UpdateConversation"];
@@ -274,7 +274,7 @@ const conversationResponseToUpdateBody = (state: ConversationResponse): UpdateCo
  *
  * @see https://dev.frontapp.com/reference/conversations
  */
-export class FrontConversation extends FrontResource<ConversationResponse, UpdateConversation> {
+export class FrontConversations extends FrontResource<ConversationResponse, UpdateConversation> {
   protected selfPath(): string {
     return FrontBase.expandPath("/conversations/{conversation_id}", {
       conversation_id: this.id,
@@ -360,8 +360,23 @@ export class FrontConversation extends FrontResource<ConversationResponse, Updat
    *
    * @see https://dev.frontapp.com/reference/update-conversation
    */
-  async update(body: UpdateConversation | Partial<UpdateConversation>): Promise<void> {
-    await this.patchNoContent(body, mergeConversationSnapshot);
+  async update(body: UpdateConversation | Partial<UpdateConversation>): Promise<void>;
+  async update(
+    conversationId: string,
+    body: UpdateConversation | Partial<UpdateConversation>,
+  ): Promise<void>;
+  async update(
+    bodyOrConversationId: string | UpdateConversation | Partial<UpdateConversation>,
+    body?: UpdateConversation | Partial<UpdateConversation>,
+  ): Promise<void> {
+    if (typeof bodyOrConversationId === "string") {
+      if (body === undefined) {
+        throw new Error("Updating a conversation by ID requires a request body.");
+      }
+      await this.target(bodyOrConversationId).update(body);
+      return;
+    }
+    await this.patchNoContent(bodyOrConversationId, mergeConversationSnapshot);
   }
 
   /**
@@ -372,7 +387,11 @@ export class FrontConversation extends FrontResource<ConversationResponse, Updat
    *
    * @see https://dev.frontapp.com/reference/delete-conversation
    */
-  override async delete(): Promise<void> {
+  override async delete(conversationId?: string): Promise<void> {
+    if (conversationId !== undefined) {
+      await this.target(conversationId).delete();
+      return;
+    }
     await super.delete();
   }
 
@@ -385,11 +404,23 @@ export class FrontConversation extends FrontResource<ConversationResponse, Updat
    *
    * @see https://dev.frontapp.com/reference/update-conversation-assignee
    */
-  async updateAssignee(body: { assignee_id: string | null }): Promise<void> {
+  async updateAssignee(body: { assignee_id: string | null }): Promise<void>;
+  async updateAssignee(conversationId: string, body: { assignee_id: string | null }): Promise<void>;
+  async updateAssignee(
+    bodyOrConversationId: string | { assignee_id: string | null },
+    body?: { assignee_id: string | null },
+  ): Promise<void> {
+    if (typeof bodyOrConversationId === "string") {
+      if (body === undefined) {
+        throw new Error("Updating a conversation assignee by ID requires a request body.");
+      }
+      await this.target(bodyOrConversationId).updateAssignee(body);
+      return;
+    }
     const path = FrontBase.expandPath("/conversations/{conversation_id}/assignee", {
       conversation_id: this.id,
     });
-    await this.base.requestJson<undefined>("PUT", path, { body });
+    await this.base.requestJson<undefined>("PUT", path, { body: bodyOrConversationId });
   }
 
   /**
@@ -399,7 +430,12 @@ export class FrontConversation extends FrontResource<ConversationResponse, Updat
    *
    * @see https://dev.frontapp.com/reference/list-conversation-comments
    */
-  async listComments(): Promise<WithNormalizedPagination<ListConversationCommentsResponse>> {
+  async listComments(
+    conversationId?: string,
+  ): Promise<WithNormalizedPagination<ListConversationCommentsResponse>> {
+    if (conversationId !== undefined) {
+      return await this.target(conversationId).listComments();
+    }
     const path = FrontBase.expandPath("/conversations/{conversation_id}/comments", {
       conversation_id: this.id,
     });
@@ -416,16 +452,27 @@ export class FrontConversation extends FrontResource<ConversationResponse, Updat
    *
    * @see https://dev.frontapp.com/reference/add-comment
    */
-  async addComment(body: CreateComment): Promise<FrontComment> {
+  async addComment(body: CreateComment): Promise<FrontComments>;
+  async addComment(conversationId: string, body: CreateComment): Promise<FrontComments>;
+  async addComment(
+    bodyOrConversationId: string | CreateComment,
+    body?: CreateComment,
+  ): Promise<FrontComments> {
+    if (typeof bodyOrConversationId === "string") {
+      if (body === undefined) {
+        throw new Error("Adding a conversation comment by ID requires a request body.");
+      }
+      return await this.target(bodyOrConversationId).addComment(body);
+    }
     const path = FrontBase.expandPath("/conversations/{conversation_id}/comments", {
       conversation_id: this.id,
     });
     const data = await this.base.requestJson<components["schemas"]["CommentResponse"]>(
       "POST",
       path,
-      { body },
+      { body: bodyOrConversationId },
     );
-    return new FrontComment(this.base, data);
+    return new FrontComments(this.base, data);
   }
 
   /**
@@ -435,7 +482,12 @@ export class FrontConversation extends FrontResource<ConversationResponse, Updat
    *
    * @see https://dev.frontapp.com/reference/list-conversation-drafts
    */
-  async listDrafts(): Promise<WithNormalizedPagination<ListConversationDraftsResponse>> {
+  async listDrafts(
+    conversationId?: string,
+  ): Promise<WithNormalizedPagination<ListConversationDraftsResponse>> {
+    if (conversationId !== undefined) {
+      return await this.target(conversationId).listDrafts();
+    }
     const path = FrontBase.expandPath("/conversations/{conversation_id}/drafts", {
       conversation_id: this.id,
     });
@@ -452,11 +504,24 @@ export class FrontConversation extends FrontResource<ConversationResponse, Updat
    *
    * @see https://dev.frontapp.com/reference/create-draft-reply
    */
-  async createDraftReply(body: ReplyDraft): Promise<MessageResponse> {
+  async createDraftReply(body: ReplyDraft): Promise<MessageResponse>;
+  async createDraftReply(conversationId: string, body: ReplyDraft): Promise<MessageResponse>;
+  async createDraftReply(
+    bodyOrConversationId: string | ReplyDraft,
+    body?: ReplyDraft,
+  ): Promise<MessageResponse> {
+    if (typeof bodyOrConversationId === "string") {
+      if (body === undefined) {
+        throw new Error("Creating a conversation draft by ID requires a request body.");
+      }
+      return await this.target(bodyOrConversationId).createDraftReply(body);
+    }
     const path = FrontBase.expandPath("/conversations/{conversation_id}/drafts", {
       conversation_id: this.id,
     });
-    return await this.base.requestJson<MessageResponse>("POST", path, { body });
+    return await this.base.requestJson<MessageResponse>("POST", path, {
+      body: bodyOrConversationId,
+    });
   }
 
   /**
@@ -468,14 +533,25 @@ export class FrontConversation extends FrontResource<ConversationResponse, Updat
    */
   async listEvents(
     query?: ListConversationEventsQuery,
+  ): Promise<WithNormalizedPagination<ListConversationEventsResponse>>;
+  async listEvents(
+    conversationId: string,
+    query?: ListConversationEventsQuery,
+  ): Promise<WithNormalizedPagination<ListConversationEventsResponse>>;
+  async listEvents(
+    queryOrConversationId?: string | ListConversationEventsQuery,
+    query?: ListConversationEventsQuery,
   ): Promise<WithNormalizedPagination<ListConversationEventsResponse>> {
+    if (typeof queryOrConversationId === "string") {
+      return await this.target(queryOrConversationId).listEvents(query);
+    }
     const path = FrontBase.expandPath("/conversations/{conversation_id}/events", {
       conversation_id: this.id,
     });
     return await this.base.requestJson<WithNormalizedPagination<ListConversationEventsResponse>>(
       "GET",
       path,
-      { query: queryFromListConversationEvents(query) },
+      { query: queryFromListConversationEvents(queryOrConversationId) },
     );
   }
 
@@ -486,7 +562,12 @@ export class FrontConversation extends FrontResource<ConversationResponse, Updat
    *
    * @see https://dev.frontapp.com/reference/list-conversation-followers
    */
-  async listFollowers(): Promise<WithNormalizedPagination<ListConversationFollowersResponse>> {
+  async listFollowers(
+    conversationId?: string,
+  ): Promise<WithNormalizedPagination<ListConversationFollowersResponse>> {
+    if (conversationId !== undefined) {
+      return await this.target(conversationId).listFollowers();
+    }
     const path = FrontBase.expandPath("/conversations/{conversation_id}/followers", {
       conversation_id: this.id,
     });
@@ -506,13 +587,33 @@ export class FrontConversation extends FrontResource<ConversationResponse, Updat
   async addFollowers(
     body: AddConversationFollowersBody,
     query?: AddConversationFollowersQuery,
+  ): Promise<void>;
+  async addFollowers(
+    conversationId: string,
+    body: AddConversationFollowersBody,
+    query?: AddConversationFollowersQuery,
+  ): Promise<void>;
+  async addFollowers(
+    bodyOrConversationId: string | AddConversationFollowersBody,
+    bodyOrQuery?: AddConversationFollowersBody | AddConversationFollowersQuery,
+    query?: AddConversationFollowersQuery,
   ): Promise<void> {
+    if (typeof bodyOrConversationId === "string") {
+      if (bodyOrQuery === undefined) {
+        throw new Error("Adding conversation followers by ID requires a request body.");
+      }
+      await this.target(bodyOrConversationId).addFollowers(
+        bodyOrQuery as AddConversationFollowersBody,
+        query,
+      );
+      return;
+    }
     const path = FrontBase.expandPath("/conversations/{conversation_id}/followers", {
       conversation_id: this.id,
     });
     await this.base.requestJson<undefined>("POST", path, {
-      body,
-      query: queryFromAddConversationFollowers(query),
+      body: bodyOrConversationId,
+      query: queryFromAddConversationFollowers(bodyOrQuery as AddConversationFollowersQuery),
     });
   }
 
@@ -523,11 +624,26 @@ export class FrontConversation extends FrontResource<ConversationResponse, Updat
    *
    * @see https://dev.frontapp.com/reference/delete-conversation-followers
    */
-  async deleteFollowers(body: DeleteConversationFollowersBody): Promise<void> {
+  async deleteFollowers(body: DeleteConversationFollowersBody): Promise<void>;
+  async deleteFollowers(
+    conversationId: string,
+    body: DeleteConversationFollowersBody,
+  ): Promise<void>;
+  async deleteFollowers(
+    bodyOrConversationId: string | DeleteConversationFollowersBody,
+    body?: DeleteConversationFollowersBody,
+  ): Promise<void> {
+    if (typeof bodyOrConversationId === "string") {
+      if (body === undefined) {
+        throw new Error("Removing conversation followers by ID requires a request body.");
+      }
+      await this.target(bodyOrConversationId).deleteFollowers(body);
+      return;
+    }
     const path = FrontBase.expandPath("/conversations/{conversation_id}/followers", {
       conversation_id: this.id,
     });
-    await this.base.requestJson<undefined>("DELETE", path, { body });
+    await this.base.requestJson<undefined>("DELETE", path, { body: bodyOrConversationId });
   }
 
   /**
@@ -537,7 +653,12 @@ export class FrontConversation extends FrontResource<ConversationResponse, Updat
    *
    * @see https://dev.frontapp.com/reference/list-conversation-inboxes
    */
-  async listInboxes(): Promise<WithNormalizedPagination<ListConversationInboxesResponse>> {
+  async listInboxes(
+    conversationId?: string,
+  ): Promise<WithNormalizedPagination<ListConversationInboxesResponse>> {
+    if (conversationId !== undefined) {
+      return await this.target(conversationId).listInboxes();
+    }
     const path = FrontBase.expandPath("/conversations/{conversation_id}/inboxes", {
       conversation_id: this.id,
     });
@@ -554,11 +675,23 @@ export class FrontConversation extends FrontResource<ConversationResponse, Updat
    *
    * @see https://dev.frontapp.com/reference/add-conversation-link
    */
-  async addLink(body: AddConversationLinkBody): Promise<void> {
+  async addLink(body: AddConversationLinkBody): Promise<void>;
+  async addLink(conversationId: string, body: AddConversationLinkBody): Promise<void>;
+  async addLink(
+    bodyOrConversationId: string | AddConversationLinkBody,
+    body?: AddConversationLinkBody,
+  ): Promise<void> {
+    if (typeof bodyOrConversationId === "string") {
+      if (body === undefined) {
+        throw new Error("Adding a conversation link by ID requires a request body.");
+      }
+      await this.target(bodyOrConversationId).addLink(body);
+      return;
+    }
     const path = FrontBase.expandPath("/conversations/{conversation_id}/links", {
       conversation_id: this.id,
     });
-    await this.base.requestJson<undefined>("POST", path, { body });
+    await this.base.requestJson<undefined>("POST", path, { body: bodyOrConversationId });
   }
 
   /**
@@ -568,11 +701,23 @@ export class FrontConversation extends FrontResource<ConversationResponse, Updat
    *
    * @see https://dev.frontapp.com/reference/remove-conversation-links
    */
-  async removeLinks(body: RemoveConversationLinksBody): Promise<void> {
+  async removeLinks(body: RemoveConversationLinksBody): Promise<void>;
+  async removeLinks(conversationId: string, body: RemoveConversationLinksBody): Promise<void>;
+  async removeLinks(
+    bodyOrConversationId: string | RemoveConversationLinksBody,
+    body?: RemoveConversationLinksBody,
+  ): Promise<void> {
+    if (typeof bodyOrConversationId === "string") {
+      if (body === undefined) {
+        throw new Error("Removing conversation links by ID requires a request body.");
+      }
+      await this.target(bodyOrConversationId).removeLinks(body);
+      return;
+    }
     const path = FrontBase.expandPath("/conversations/{conversation_id}/links", {
       conversation_id: this.id,
     });
-    await this.base.requestJson<undefined>("DELETE", path, { body });
+    await this.base.requestJson<undefined>("DELETE", path, { body: bodyOrConversationId });
   }
 
   /**
@@ -584,8 +729,19 @@ export class FrontConversation extends FrontResource<ConversationResponse, Updat
    */
   async listMessages(
     query?: ListConversationMessagesQuery,
+  ): Promise<WithNormalizedPagination<ListConversationMessagesResponse>>;
+  async listMessages(
+    conversationId: string,
+    query?: ListConversationMessagesQuery,
+  ): Promise<WithNormalizedPagination<ListConversationMessagesResponse>>;
+  async listMessages(
+    queryOrConversationId?: string | ListConversationMessagesQuery,
+    query?: ListConversationMessagesQuery,
   ): Promise<WithNormalizedPagination<ListConversationMessagesResponse>> {
-    return await requestListConversationMessages(this.base, this.id, query);
+    if (typeof queryOrConversationId === "string") {
+      return await this.target(queryOrConversationId).listMessages(query);
+    }
+    return await requestListConversationMessages(this.base, this.id, queryOrConversationId);
   }
 
   /**
@@ -595,12 +751,26 @@ export class FrontConversation extends FrontResource<ConversationResponse, Updat
    *
    * @see https://dev.frontapp.com/reference/create-message-reply
    */
-  async createMessageReply(body: OutboundReplyMessage): Promise<AcceptedMessageReply> {
+  async createMessageReply(body: OutboundReplyMessage): Promise<AcceptedMessageReply>;
+  async createMessageReply(
+    conversationId: string,
+    body: OutboundReplyMessage,
+  ): Promise<AcceptedMessageReply>;
+  async createMessageReply(
+    bodyOrConversationId: string | OutboundReplyMessage,
+    body?: OutboundReplyMessage,
+  ): Promise<AcceptedMessageReply> {
+    if (typeof bodyOrConversationId === "string") {
+      if (body === undefined) {
+        throw new Error("Replying to a conversation by ID requires a request body.");
+      }
+      return await this.target(bodyOrConversationId).createMessageReply(body);
+    }
     const path = FrontBase.expandPath("/conversations/{conversation_id}/messages", {
       conversation_id: this.id,
     });
     return await this.base.requestJson<AcceptedMessageReply>("POST", path, {
-      body,
+      body: bodyOrConversationId,
     });
   }
 
@@ -611,11 +781,23 @@ export class FrontConversation extends FrontResource<ConversationResponse, Updat
    *
    * @see https://dev.frontapp.com/reference/update-conversation-reminders
    */
-  async updateReminders(body: UpdateConversationReminders): Promise<void> {
+  async updateReminders(body: UpdateConversationReminders): Promise<void>;
+  async updateReminders(conversationId: string, body: UpdateConversationReminders): Promise<void>;
+  async updateReminders(
+    bodyOrConversationId: string | UpdateConversationReminders,
+    body?: UpdateConversationReminders,
+  ): Promise<void> {
+    if (typeof bodyOrConversationId === "string") {
+      if (body === undefined) {
+        throw new Error("Updating conversation reminders by ID requires a request body.");
+      }
+      await this.target(bodyOrConversationId).updateReminders(body);
+      return;
+    }
     const path = FrontBase.expandPath("/conversations/{conversation_id}/reminders", {
       conversation_id: this.id,
     });
-    await this.base.requestJson<undefined>("PATCH", path, { body });
+    await this.base.requestJson<undefined>("PATCH", path, { body: bodyOrConversationId });
   }
 
   /**
@@ -625,11 +807,20 @@ export class FrontConversation extends FrontResource<ConversationResponse, Updat
    *
    * @see https://dev.frontapp.com/reference/add-conversation-tag
    */
-  async addTag(body: TagIds): Promise<void> {
+  async addTag(body: TagIds): Promise<void>;
+  async addTag(conversationId: string, body: TagIds): Promise<void>;
+  async addTag(bodyOrConversationId: string | TagIds, body?: TagIds): Promise<void> {
+    if (typeof bodyOrConversationId === "string") {
+      if (body === undefined) {
+        throw new Error("Adding a conversation tag by ID requires a request body.");
+      }
+      await this.target(bodyOrConversationId).addTag(body);
+      return;
+    }
     const path = FrontBase.expandPath("/conversations/{conversation_id}/tags", {
       conversation_id: this.id,
     });
-    await this.base.requestJson<undefined>("POST", path, { body });
+    await this.base.requestJson<undefined>("POST", path, { body: bodyOrConversationId });
   }
 
   /**
@@ -639,27 +830,26 @@ export class FrontConversation extends FrontResource<ConversationResponse, Updat
    *
    * @see https://dev.frontapp.com/reference/remove-conversation-tag
    */
-  async removeTag(body: TagIds): Promise<void> {
+  async removeTag(body: TagIds): Promise<void>;
+  async removeTag(conversationId: string, body: TagIds): Promise<void>;
+  async removeTag(bodyOrConversationId: string | TagIds, body?: TagIds): Promise<void> {
+    if (typeof bodyOrConversationId === "string") {
+      if (body === undefined) {
+        throw new Error("Removing a conversation tag by ID requires a request body.");
+      }
+      await this.target(bodyOrConversationId).removeTag(body);
+      return;
+    }
     const path = FrontBase.expandPath("/conversations/{conversation_id}/tags", {
       conversation_id: this.id,
     });
-    await this.base.requestJson<undefined>("DELETE", path, { body });
+    await this.base.requestJson<undefined>("DELETE", path, { body: bodyOrConversationId });
   }
-}
-
-/**
- * Company conversations (`/conversations`, `/conversations/custom_fields`, `/conversations/search/{query}`, …).
- *
- * @see https://dev.frontapp.com/reference/conversations
- */
-export class FrontConversations {
-  private readonly base: FrontBase;
-
-  /** @param base Shared HTTP client (in practice the `Front` instance). */
-  constructor(base: FrontBase) {
-    this.base = base;
-  }
-
+  /**
+   * Company conversations (`/conversations`, `/conversations/custom_fields`, `/conversations/search/{query}`, …).
+   *
+   * @see https://dev.frontapp.com/reference/conversations
+   */
   /**
    * List conversations (`GET /conversations`).
    *
@@ -684,11 +874,11 @@ export class FrontConversations {
    *
    * @see https://dev.frontapp.com/reference/create-conversation
    */
-  async create(body: CreateConversation): Promise<FrontConversation> {
+  async create(body: CreateConversation): Promise<FrontConversations> {
     const data = await this.base.requestJson<ConversationResponse>("POST", "/conversations", {
       body,
     });
-    return new FrontConversation(this.base, data);
+    return new FrontConversations(this.base, data);
   }
 
   /**
@@ -729,21 +919,6 @@ export class FrontConversations {
   }
 
   /**
-   * List messages in a conversation (`GET /conversations/{conversation_id}/messages`).
-   *
-   * **Required scope:** `messages:read`
-   *
-   * @param conversationId Conversation id or supported [resource alias](https://dev.frontapp.com/docs/resource-aliases-1).
-   * @see https://dev.frontapp.com/reference/list-conversation-messages
-   */
-  async listMessages(
-    conversationId: string,
-    query?: ListConversationMessagesQuery,
-  ): Promise<WithNormalizedPagination<ListConversationMessagesResponse>> {
-    return await requestListConversationMessages(this.base, conversationId, query);
-  }
-
-  /**
    * Fetch one conversation (`GET /conversations/{conversation_id}`).
    *
    * **Required scope:** `conversations:read`
@@ -751,11 +926,14 @@ export class FrontConversations {
    * @param conversationId Conversation id or supported [resource alias](https://dev.frontapp.com/docs/resource-aliases-1).
    * @see https://dev.frontapp.com/reference/get-conversation-by-id
    */
-  async get(conversationId: string): Promise<FrontConversation> {
-    const path = FrontBase.expandPath("/conversations/{conversation_id}", {
-      conversation_id: conversationId,
-    });
-    const data = await this.base.requestJson<ConversationResponse>("GET", path);
-    return new FrontConversation(this.base, data);
+  async get(conversationId: string): Promise<FrontConversations> {
+    const conversation = this.target(conversationId);
+    await conversation.refresh();
+    return conversation;
+  }
+
+  /** Target a conversation by id without calling the API first. */
+  private target(conversationId: string): FrontConversations {
+    return new FrontConversations(this.base, undefined, conversationId);
   }
 }

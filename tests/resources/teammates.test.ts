@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { FrontTeammate } from "../../src/index";
+import { FrontTeammates } from "../../src/resources/teammates";
 import { createMockClient, createTestSetup, jsonResponse } from "../helpers/setup";
 
 describe("teammates", () => {
@@ -11,7 +11,7 @@ describe("teammates", () => {
     expect(requests[0]?.url).toBe("https://api2.frontapp.com/teammates");
   });
 
-  test("teammates.get returns FrontTeammate", async () => {
+  test("teammates.get returns a hydrated bound teammate", async () => {
     const { front, requests } = createMockClient(() =>
       jsonResponse({
         _links: { self: "https://api2.frontapp.com/teammates/tea_1" },
@@ -28,14 +28,14 @@ describe("teammates", () => {
       }),
     );
     const tm = await front.teammates.get("tea_1");
-    expect(tm).toBeInstanceOf(FrontTeammate);
+    expect(tm).toBeInstanceOf(FrontTeammates);
     expect(tm.id).toBe("tea_1");
     expect(tm.email).toBe("a@example.com");
     expect(tm.firstName).toBe("Ali");
     expect(requests[0]?.url).toBe("https://api2.frontapp.com/teammates/tea_1");
   });
 
-  test("FrontTeammate.update merges on 204 response", async () => {
+  test("a hydrated teammate update merges on a 204 response", async () => {
     const { front } = createMockClient((req) => {
       const { url } = req;
       if (req.method === "GET" && url.endsWith("/teammates/tea_1")) {
@@ -64,7 +64,7 @@ describe("teammates", () => {
     expect(tm.email).toBe("a@example.com");
   });
 
-  test("FrontTeammate.listAssignedConversations sends GET with query", async () => {
+  test("a teammate lists assigned conversations with a query", async () => {
     const { front, requests } = createMockClient((req) => {
       const { url } = req;
       if (

@@ -23,7 +23,7 @@ const commentResponseToUpdateBody = (state: CommentResponse): UpdateComment => (
  *
  * @see https://dev.frontapp.com/reference/comments
  */
-export class FrontComment extends FrontResource<CommentResponse, UpdateComment> {
+export class FrontComments extends FrontResource<CommentResponse, UpdateComment> {
   protected selfPath(): string {
     return FrontBase.expandPath("/comments/{comment_id}", {
       comment_id: this.id,
@@ -68,7 +68,10 @@ export class FrontComment extends FrontResource<CommentResponse, UpdateComment> 
   /**
    * The Front API does not expose `DELETE /comments/{comment_id}` on this path.
    */
-  override delete(): Promise<void> {
+  override delete(commentId?: string): Promise<void> {
+    if (commentId !== undefined) {
+      return this.target(commentId).delete();
+    }
     return Promise.reject(
       new Error(
         `Deleting comment ${this.id} is not supported by the Front REST API for this path.`,
@@ -85,8 +88,19 @@ export class FrontComment extends FrontResource<CommentResponse, UpdateComment> 
    *
    * **Required scope:** `comments:write`
    */
-  async update(body: UpdateComment | Partial<UpdateComment>): Promise<void> {
-    const next = await this.base.requestJson<CommentResponse>("PATCH", this.patchPath(), { body });
+  async update(body: UpdateComment | Partial<UpdateComment>): Promise<void>;
+  async update(commentId: string, body: UpdateComment | Partial<UpdateComment>): Promise<void>;
+  async update(
+    bodyOrCommentId: UpdateComment | Partial<UpdateComment> | string,
+    directBody?: UpdateComment | Partial<UpdateComment>,
+  ): Promise<void> {
+    if (typeof bodyOrCommentId === "string") {
+      await this.target(bodyOrCommentId).update(directBody ?? {});
+      return;
+    }
+    const next = await this.base.requestJson<CommentResponse>("PATCH", this.patchPath(), {
+      body: bodyOrCommentId,
+    });
     this.replaceState(next);
   }
 
@@ -95,7 +109,12 @@ export class FrontComment extends FrontResource<CommentResponse, UpdateComment> 
    *
    * **Required scope:** `teammates:read`
    */
-  async listMentions(): Promise<WithNormalizedPagination<ListCommentMentionsResponse>> {
+  async listMentions(
+    commentId?: string,
+  ): Promise<WithNormalizedPagination<ListCommentMentionsResponse>> {
+    if (commentId !== undefined) {
+      return await this.target(commentId).listMentions();
+    }
     const path = FrontBase.expandPath("/comments/{comment_id}/mentions", {
       comment_id: this.id,
     });
@@ -110,14 +129,22 @@ export class FrontComment extends FrontResource<CommentResponse, UpdateComment> 
    *
    * **Required scope:** `comments:write`
    */
-  async addReply(body: CreateComment): Promise<FrontComment> {
+  async addReply(body: CreateComment): Promise<FrontComments>;
+  async addReply(commentId: string, body: CreateComment): Promise<FrontComments>;
+  async addReply(
+    bodyOrCommentId: CreateComment | string,
+    directBody?: CreateComment,
+  ): Promise<FrontComments> {
+    if (typeof bodyOrCommentId === "string") {
+      return await this.target(bodyOrCommentId).addReply(directBody ?? { body: "" });
+    }
     const path = FrontBase.expandPath("/comments/{comment_id}/replies", {
       comment_id: this.id,
     });
     const data = await this.base.requestJson<CommentResponse>("POST", path, {
-      body,
+      body: bodyOrCommentId,
     });
-    return new FrontComment(this.base, data);
+    return new FrontComments(this.base, data);
   }
 
   /**
@@ -126,28 +153,21 @@ export class FrontComment extends FrontResource<CommentResponse, UpdateComment> 
    *
    * **Required scope:** `attachments:read`
    */
-  async downloadAttachment(attachmentLinkId: string): Promise<Response> {
+  async downloadAttachment(
+    commentIdOrAttachmentLinkId: string,
+    directAttachmentLinkId?: string,
+  ): Promise<Response> {
+    if (directAttachmentLinkId !== undefined) {
+      return await this.target(commentIdOrAttachmentLinkId).downloadAttachment(
+        directAttachmentLinkId,
+      );
+    }
     const path = FrontBase.expandPath("/comments/{comment_id}/download/{attachment_link_id}", {
-      attachment_link_id: attachmentLinkId,
+      attachment_link_id: commentIdOrAttachmentLinkId,
       comment_id: this.id,
     });
     return await this.base.requestWithoutParsingBody("GET", path);
   }
-}
-
-/**
- * Comments (`GET /comments/{comment_id}`).
- *
- * @see https://dev.frontapp.com/reference/comments
- */
-export class FrontComments {
-  private readonly base: FrontBase;
-
-  /** @param base Shared HTTP client (in practice the `Front` instance). */
-  constructor(base: FrontBase) {
-    this.base = base;
-  }
-
   /**
    * Fetch one comment (`GET /comments/{comment_id}`).
    *
@@ -155,11 +175,12 @@ export class FrontComments {
    *
    * @param commentId Comment id or supported [resource alias](https://dev.frontapp.com/docs/resource-aliases-1).
    */
-  async get(commentId: string): Promise<FrontComment> {
-    const path = FrontBase.expandPath("/comments/{comment_id}", {
-      comment_id: commentId,
-    });
-    const data = await this.base.requestJson<CommentResponse>("GET", path);
-    return new FrontComment(this.base, data);
+  async get(commentId: string): Promise<FrontComments> {
+    return await this.target(commentId).refresh();
+  }
+
+  /** Target a comment by ID without fetching it first. */
+  private target(commentId: string): FrontComments {
+    return new FrontComments(this.base, undefined, commentId);
   }
 }

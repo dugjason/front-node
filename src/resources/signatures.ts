@@ -28,7 +28,7 @@ const signatureResponseToUpdateBody = (state: SignatureResponse): UpdateSignatur
  *
  * @see https://dev.frontapp.com/reference/signatures
  */
-export class FrontSignature extends FrontResource<SignatureResponse, UpdateSignature> {
+export class FrontSignatures extends FrontResource<SignatureResponse, UpdateSignature> {
   protected selfPath(): string {
     return FrontBase.expandPath("/signatures/{signature_id}", {
       signature_id: this.id,
@@ -103,22 +103,28 @@ export class FrontSignature extends FrontResource<SignatureResponse, UpdateSigna
    * @param body Fields to change (OpenAPI {@link UpdateSignature}).
    * @see https://dev.frontapp.com/reference/update-signature
    */
-  async update(body: UpdateSignature | Partial<UpdateSignature>): Promise<void> {
-    await this.patchReplaceFromResponse(body);
+  async update(body: UpdateSignature | Partial<UpdateSignature>): Promise<void>;
+  async update(
+    signatureId: string,
+    body: UpdateSignature | Partial<UpdateSignature>,
+  ): Promise<void>;
+  async update(
+    bodyOrSignatureId: UpdateSignature | Partial<UpdateSignature> | string,
+    directBody?: UpdateSignature | Partial<UpdateSignature>,
+  ): Promise<void> {
+    if (typeof bodyOrSignatureId === "string") {
+      await this.target(bodyOrSignatureId).update(directBody ?? {});
+      return;
+    }
+    await this.patchReplaceFromResponse(bodyOrSignatureId);
   }
-}
 
-/**
- * Signatures: `GET/PATCH/DELETE /signatures/{signature_id}` plus teammate/team list and create routes.
- *
- * @see https://dev.frontapp.com/reference/signatures
- */
-export class FrontSignatures {
-  private readonly base: FrontBase;
-
-  /** @param base Shared HTTP client (in practice the `Front` instance). */
-  constructor(base: FrontBase) {
-    this.base = base;
+  override async delete(signatureId?: string): Promise<void> {
+    if (signatureId === undefined) {
+      await super.delete();
+      return;
+    }
+    await this.target(signatureId).delete();
   }
 
   /**
@@ -129,12 +135,13 @@ export class FrontSignatures {
    * @param signatureId Signature id.
    * @see https://dev.frontapp.com/reference/get-signatures
    */
-  async get(signatureId: string): Promise<FrontSignature> {
-    const path = FrontBase.expandPath("/signatures/{signature_id}", {
-      signature_id: signatureId,
-    });
-    const data = await this.base.requestJson<SignatureResponse>("GET", path);
-    return new FrontSignature(this.base, data);
+  async get(signatureId: string): Promise<FrontSignatures> {
+    return await this.target(signatureId).refresh();
+  }
+
+  /** Target a signature by id without calling the API first. */
+  private target(signatureId: string): FrontSignatures {
+    return new FrontSignatures(this.base, undefined, signatureId);
   }
 
   /**
@@ -166,14 +173,14 @@ export class FrontSignatures {
    * @param body Create payload (OpenAPI {@link CreatePrivateSignature}).
    * @see https://dev.frontapp.com/reference/create-teammate-signature
    */
-  async createTeammate(teammateId: string, body: CreatePrivateSignature): Promise<FrontSignature> {
+  async createTeammate(teammateId: string, body: CreatePrivateSignature): Promise<FrontSignatures> {
     const path = FrontBase.expandPath("/teammates/{teammate_id}/signatures", {
       teammate_id: teammateId,
     });
     const data = await this.base.requestJson<SignatureResponse>("POST", path, {
       body,
     });
-    return new FrontSignature(this.base, data);
+    return new FrontSignatures(this.base, data);
   }
 
   /**
@@ -203,13 +210,13 @@ export class FrontSignatures {
    * @param body Create payload (OpenAPI {@link CreateSharedSignature}).
    * @see https://dev.frontapp.com/reference/create-team-signature
    */
-  async createTeam(teamId: string, body: CreateSharedSignature): Promise<FrontSignature> {
+  async createTeam(teamId: string, body: CreateSharedSignature): Promise<FrontSignatures> {
     const path = FrontBase.expandPath("/teams/{team_id}/signatures", {
       team_id: teamId,
     });
     const data = await this.base.requestJson<SignatureResponse>("POST", path, {
       body,
     });
-    return new FrontSignature(this.base, data);
+    return new FrontSignatures(this.base, data);
   }
 }

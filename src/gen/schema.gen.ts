@@ -1001,8 +1001,8 @@ export interface paths {
     get: operations["list-conversations"];
     put?: never;
     /**
-     * Create discussion conversation
-     * @description Create a new [conversation](https://dev.frontapp.com/reference/conversations#creating-a-new-conversation) that only supports comments (known as discussions in Front). If you want to create a conversation that supports messages, use the [Create message](https://dev.frontapp.com/reference/post_channels-channel-id-messages) endpoint. If you want to add a comment to an existing conversation, use the [Add comment](https://dev.frontapp.com/reference/post_conversations-conversation-id-comments) endpoint.
+     * Create discussion/task conversation
+     * @description Create a new [conversation](https://dev.frontapp.com/reference/conversations#creating-a-new-conversation) of type discussion or task. Both types only support comments. If you want to create a conversation that supports messages, use the [Create message](https://dev.frontapp.com/reference/post_channels-channel-id-messages) endpoint. If you want to add a comment to an existing conversation, use the [Add comment](https://dev.frontapp.com/reference/post_conversations-conversation-id-comments) endpoint.
      *
      *     Required scope: `conversations:write`
      */
@@ -1022,7 +1022,9 @@ export interface paths {
     };
     /**
      * List Conversation's custom fields
-     * @description Lists the custom fields that can be attached to a Conversation.
+     * @description Lists customer-managed custom fields that can be attached to a Conversation.
+     *     Front-managed system fields are excluded.
+     *
      *
      *     Required scope: `custom_fields:read`
      */
@@ -4039,7 +4041,10 @@ export interface components {
       /** @description List of IDs of the contacts to add in the requested contact list. Alternatively, you can supply the contact source and handle as a [resource alias](https://dev.frontapp.com/docs/resource-aliases-1). */
       contact_ids: components["schemas"]["ResourceID"][];
     };
-    /** @enum {string} */
+    /**
+     * Columns
+     * @enum {string}
+     */
     AnalyticsActivitiesColumns:
       | "Activity ID"
       | "Type"
@@ -4111,20 +4116,23 @@ export interface components {
       | "Transitions to Ticket Status"
       | "Smart QA score"
       | "Custom Field"
-      | "Updated Custom Field";
+      | "Updated Custom Field"
+      | "Attributed teammates";
     AnalyticsActivitiesExportsColumns: {
       /**
-       * @description List of the columns to include in the export. In addition to the
-       *     predefined columns, you can also include parameterized columns by
-       *     appending the parameter value to the column name, separated by a
-       *     colon (`:`). List of supported prefixes:
-       *       - `Time spent in Ticket Status` (e.g., "Time spent in Ticket Status:123", where 123 is the ticket status tag ID)
-       *       - `Transitions to Ticket Status` (e.g., "Transitions to Ticket Status:123", where 123 is the ticket status tag ID)
-       *       - `Smart QA score` (e.g., "Smart QA score:Comprehension", where "Comprehension" is the Smart QA criteria ID)
-       *       - `Custom Field` (e.g., "Custom Field:456", where 456 is the custom field ID)
-       *       - `Updated Custom Field` (e.g., "Updated Custom Field:456", where 456 is the custom field ID)
+       * @description List of the columns to include in the export.
        *
-       *     Example: `["Message ID", "Time spent in Ticket Status:123", "Smart QA score:Comprehension"]`
+       *     **Fixed columns** are plain strings selected from the predefined list (e.g., `"Message ID"`).
+       *
+       *     **Parameterized columns** require an additional parameter and must be specified as an object
+       *     with `name` and `id` fields. Supported parameterized prefixes:
+       *       - `Time spent in Ticket Status` — `id` is the ticket status public API ID (e.g., `sts_123`)
+       *       - `Transitions to Ticket Status` — `id` is the ticket status public API ID (e.g., `sts_123`)
+       *       - `Smart QA score` — `id` is the Smart QA criteria name (e.g., `Comprehension`)
+       *       - `Custom Field` — `id` is the custom field public API ID (e.g., `fld_456`)
+       *       - `Updated Custom Field` — `id` is the custom field public API ID (e.g., `fld_456`)
+       *
+       *     Example: `["Message ID", {"name": "Time spent in Ticket Status", "id": "sts_123"}, {"name": "Smart QA score", "id": "Comprehension"}]`
        * @default [
        *       "Activity ID",
        *       "Type",
@@ -4187,12 +4195,12 @@ export interface components {
        *       "Added tag API ID",
        *       "Removed tag",
        *       "Removed tag API ID",
-       *       "Segment cumulative teammates"
+       *       "Segment cumulative teammates",
+       *       "Attributed teammates"
        *     ]
        */
       columns: (
         | components["schemas"]["AnalyticsActivitiesColumns"]
-        | components["schemas"]["AnalyticsActivitiesParameterizedColumns"]
         | components["schemas"]["AnalyticsActivitiesSmartQAParameterizedColumn"]
         | components["schemas"]["AnalyticsActivitiesNumericParameterizedColumn"]
       )[];
@@ -4202,6 +4210,7 @@ export interface components {
        */
       type: "events";
     };
+    /** Columns with numeric parameter */
     AnalyticsActivitiesNumericParameterizedColumn: {
       /** @enum {string} */
       name:
@@ -4209,9 +4218,11 @@ export interface components {
         | "Transitions to Ticket Status"
         | "Custom Field"
         | "Updated Custom Field";
-      id: number;
+      /** @description Public API string ID (e.g., sts_123 for ticket statuses, fld_456 for custom fields) or legacy numeric ID */
+      id: string | number;
     };
     AnalyticsActivitiesParameterizedColumns: string;
+    /** Smart QA Columns */
     AnalyticsActivitiesSmartQAParameterizedColumn: {
       /** @enum {string} */
       name: "Smart QA score";
@@ -4358,7 +4369,8 @@ export interface components {
       | "Segment cumulative teammates"
       | "Ticket status name"
       | "Ticket status category"
-      | "Custom Field";
+      | "Custom Field"
+      | "Attributed teammates";
     AnalyticsMessagesExportColumns: {
       /**
        * @description List of the columns to include in the export.
@@ -4403,7 +4415,8 @@ export interface components {
        *       "Segment end",
        *       "Segment closed",
        *       "Last segment activity",
-       *       "Segment cumulative teammates"
+       *       "Segment cumulative teammates",
+       *       "Attributed teammates"
        *     ]
        */
       columns: components["schemas"]["AnalyticsMessagesColumns"][];
@@ -4917,6 +4930,12 @@ export interface components {
        */
       id: string;
       /**
+       * @description Type of the conversation
+       * @example discussion
+       * @enum {string}
+       */
+      type: "conversation" | "discussion" | "task";
+      /**
        * @description Subject of the message for email message
        * @example How to prank Dwight Schrute
        */
@@ -4977,6 +4996,13 @@ export interface components {
       is_private: boolean;
       /** @description List of scheduled (non-expired and non-canceled) reminders for this conversation */
       scheduled_reminders: components["schemas"]["Reminder"][];
+      /** @description Description of the task. Only present on task conversations. */
+      description?: string | null;
+      /**
+       * @description Unix timestamp in seconds when the task is due. Only present on task conversations.
+       * @example 1701292649.333
+       */
+      due_at?: number | null;
       /** @description Optional metadata about the conversation */
       metadata: {
         /**
@@ -5015,6 +5041,24 @@ export interface components {
       type: "custom" | "smtp" | "twilio";
       /** @description Sending address of your channel. Required for SMTP and Twilio channels. */
       send_as?: string;
+      /**
+       * @description The UID of a developer app that defines a channel. When provided, an application
+       *     channel bound to that app is created (the channel `type` must be "custom").
+       */
+      application_uid?: string;
+      /**
+       * @description Credentials used to authenticate requests to the application's service. Only used with
+       *     `application_uid`, and its shape depends on the application server's authentication type:
+       *       - `none`: omit.
+       *       - `api_key`: `{ "api_key": string }`.
+       *       - `basic`: `{ "username": string, "password": string }`.
+       *       - `bearer`: `{ "access_token": string }`.
+       *       - OAuth2 `client_credentials`: `{ "client_id": string, "client_secret": string }`
+       *       - OAuth2 `password`: `{ "username": string, "password": string }`
+       *       - OAuth2 `authorization_code`: omit. The channel is created unauthenticated and the OAuth
+       *         flow must be completed interactively afterwards.
+       */
+      credentials?: Record<string, never>;
     };
     CreateComment: {
       /** @description ID of the teammate creating the comment. Alternatively, you can supply the author as a [resource alias](https://dev.frontapp.com/docs/resource-aliases-1). If omitted, will post as the API Token or OAuth client of the requester. */
@@ -5045,15 +5089,15 @@ export interface components {
        * @description Conversation type
        * @enum {string}
        */
-      type: "discussion";
+      type: "discussion" | "task";
       /** @description Inbox ID for the conversation. Either `inbox_id` OR `teammate_ids` must be provided (not both). */
       inbox_id?: string;
       /** @description Teammates to add to the conversation. Either `inbox_id` OR `teammate_ids` must be provided (not both). */
       teammate_ids?: string[];
-      /** @description Subject of the conversation */
+      /** @description Subject of the conversation. Used as the title for tasks. */
       subject: string;
-      /** @description Details for the starter comment */
-      comment: {
+      /** @description Details for the starter comment. Required for discussions, optional for tasks. */
+      comment?: {
         /** @description ID of the teammate creating the comment. If omitted, will post as the API Token or OAuth client of the requester. */
         author_id?: string;
         /** @description Content of the comment */
@@ -5061,6 +5105,10 @@ export interface components {
         /** @description Binary data of attached files. Must use `Content-Type: multipart/form-data` if specified. See [example](https://gist.github.com/hdornier/e04d04921032e98271f46ff8a539a4cb) or read more about [Attachments](https://dev.frontapp.com/docs/attachments-1). */
         attachments?: string[];
       };
+      /** @description Description of the task. Only allowed when type is `task`. */
+      description?: string;
+      /** @description Unix timestamp in seconds when the task is due. Must be in the future and within 50 years. Only allowed when type is `task`. */
+      due_at?: number;
       /** @description Custom fields for this conversation */
       custom_fields?: components["schemas"]["CustomFieldParameter"];
     };
@@ -5523,11 +5571,14 @@ export interface components {
         | "call_abandoned"
         | "call_queued"
         | "call_on_hold"
+        | "call_parked"
         | "call_resumed"
         | "call_connected"
         | "call_missed"
         | "call_hangup"
-        | "call_transferred";
+        | "call_transferred"
+        | "call_transcript_added"
+        | "call_voicemail_transcript_added";
       /**
        * @description The timestamp when the event has been emitted
        * @example 1703102616
@@ -7269,6 +7320,13 @@ export interface components {
       status_id?: string;
       /** @description List of all the tag IDs replacing the old conversation tags */
       tag_ids?: components["schemas"]["ResourceID"][];
+      /** @description Description of the task. Only allowed on task conversations. Set to null to clear. */
+      description?: string | null;
+      /**
+       * @description Unix timestamp in seconds when the task is due. Must be in the future and within 50 years. Only allowed on task conversations. Set to null to clear.
+       * @example 1701292649.333
+       */
+      due_at?: number | null;
       /** @description Custom fields for this conversation. If you want to keep all custom fields the same when updating this resource, do not include any custom fields in the update. If you want to update custom fields, make sure to include all custom fields, not just the fields you want to add or update. If you send only the custom fields you want to update, the other custom fields will be erased. You can retrieve the existing custom fields before making the update to note the current fields. Send as an object of key:value pairs where the key is the custom field name and the value is the custom field value. */
       custom_fields?: components["schemas"]["CustomFieldParameter"];
     };

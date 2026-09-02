@@ -1,8 +1,18 @@
 import { describe, expect, test } from "bun:test";
 
-import { createTestSetup } from "../helpers/setup";
+import { createMockClient, createTestSetup } from "../helpers/setup";
 
 describe("conversations", () => {
+  test("ID-first conversation API updates nested resources without fetching first", async () => {
+    const { front, requests } = createMockClient(() => new Response(null, { status: 204 }));
+
+    await front.conversations.addTag("cnv_1", { tag_ids: ["tag_1"] });
+
+    expect(requests).toHaveLength(1);
+    expect(requests[0]?.method).toBe("POST");
+    expect(requests[0]?.url).toBe("https://api2.frontapp.com/conversations/cnv_1/tags");
+  });
+
   test("conversations.search encodes the query path segment", async () => {
     const { front, requests } = createTestSetup();
     await front.conversations.search("open priority");

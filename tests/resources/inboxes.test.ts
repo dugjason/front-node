@@ -25,7 +25,7 @@ describe("inboxes", () => {
     expect(requests[0]?.url).toBe("https://api2.frontapp.com/inboxes/inb_1/imported_messages");
   });
 
-  test("inboxes.listChannels GETs /inboxes/{inbox_id}/channels", async () => {
+  test("inboxes.listChannels targets an inbox without fetching", async () => {
     const { front, requests } = createMockClient(() =>
       jsonResponse({ _pagination: {}, _results: [] }),
     );

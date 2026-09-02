@@ -2,7 +2,7 @@ import { FrontBase } from "../base";
 import type { components, operations } from "../gen/schema.gen";
 import type { WithNormalizedPagination } from "../normalize-response";
 import type { CreateTag } from "./tags";
-import { FrontTag } from "./tags";
+import { FrontTags } from "./tags";
 
 export type RuleResponse = components["schemas"]["RuleResponse"];
 export type StatusResponse = components["schemas"]["StatusResponse"];
@@ -109,12 +109,12 @@ export class FrontCompany {
    *
    * **Required scope:** `tags:write`
    */
-  async createTag(body: CreateTag): Promise<FrontTag> {
+  async createTag(body: CreateTag): Promise<FrontTags> {
     const data = await this.base.requestJson<components["schemas"]["TagResponse"]>(
       "POST",
       "/company/tags",
       { body },
     );
-    return new FrontTag(this.base, data);
+    return new FrontTags(this.base, data);
   }
 }

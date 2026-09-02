@@ -61,7 +61,7 @@ const viewResponseToUpdateBody = (state: ViewResponse): UpdateView => ({
  *
  * @see https://dev.frontapp.com/reference/views
  */
-export class FrontView extends FrontResource<ViewResponse, UpdateView> {
+export class FrontViews extends FrontResource<ViewResponse, UpdateView> {
   protected selfPath(): string {
     return FrontBase.expandPath("/views/{view_id}", { view_id: this.id });
   }
@@ -141,8 +141,20 @@ export class FrontView extends FrontResource<ViewResponse, UpdateView> {
    *
    * @see https://dev.frontapp.com/reference/update-view
    */
-  async update(body: UpdateView | Partial<UpdateView>): Promise<void> {
-    await this.patchNoContent(body, mergeViewSnapshot);
+  async update(body: UpdateView | Partial<UpdateView>): Promise<void>;
+  async update(viewId: string, body: UpdateView | Partial<UpdateView>): Promise<void>;
+  async update(
+    bodyOrViewId: string | UpdateView | Partial<UpdateView>,
+    body?: UpdateView | Partial<UpdateView>,
+  ): Promise<void> {
+    if (typeof bodyOrViewId === "string") {
+      if (body === undefined) {
+        throw new Error("Updating a view by ID requires a request body.");
+      }
+      await this.target(bodyOrViewId).update(body);
+      return;
+    }
+    await this.patchNoContent(bodyOrViewId, mergeViewSnapshot);
   }
 
   /**
@@ -158,20 +170,11 @@ export class FrontView extends FrontResource<ViewResponse, UpdateView> {
     });
     await this.base.requestJson<undefined>("POST", path, { body });
   }
-}
-
-/**
- * Views under `/views`.
- *
- * @see https://dev.frontapp.com/reference/views
- */
-export class FrontViews {
-  private readonly base: FrontBase;
-
-  constructor(base: FrontBase) {
-    this.base = base;
-  }
-
+  /**
+   * Views under `/views`.
+   *
+   * @see https://dev.frontapp.com/reference/views
+   */
   /**
    * List views (`GET /views`).
    *
@@ -195,9 +198,14 @@ export class FrontViews {
    *
    * @see https://dev.frontapp.com/reference/get-view
    */
-  async get(viewId: string): Promise<FrontView> {
-    const path = FrontBase.expandPath("/views/{view_id}", { view_id: viewId });
-    const data = await this.base.requestJson<ViewResponse>("GET", path);
-    return new FrontView(this.base, data);
+  async get(viewId: string): Promise<FrontViews> {
+    const view = this.target(viewId);
+    await view.refresh();
+    return view;
+  }
+
+  /** Target a view by id without calling the API first. */
+  private target(viewId: string): FrontViews {
+    return new FrontViews(this.base, undefined, viewId);
   }
 }

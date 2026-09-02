@@ -20,4 +20,12 @@ describe("contacts and events", () => {
       sort_order: "desc",
     });
   });
+
+  test("contacts.addNote targets a contact without fetching", async () => {
+    const { front, requests } = createTestSetup();
+    await front.contacts.addNote("ctc_1", { author_id: "tea_1", body: "Follow up" });
+    expect(requests).toHaveLength(1);
+    expect(requests[0]?.method).toBe("POST");
+    expect(requests[0]?.url).toBe("https://api2.frontapp.com/contacts/ctc_1/notes");
+  });
 });

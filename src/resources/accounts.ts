@@ -81,7 +81,7 @@ const accountResponseToUpdateBody = (state: AccountResponse): AccountPatch => ({
  *
  * @see https://dev.frontapp.com/reference/accounts
  */
-export class FrontAccount extends FrontResource<AccountResponse, AccountPatch> {
+export class FrontAccounts extends FrontResource<AccountResponse, AccountPatch> {
   protected selfPath(): string {
     return FrontBase.expandPath("/accounts/{account_id}", {
       account_id: this.id,
@@ -152,8 +152,25 @@ export class FrontAccount extends FrontResource<AccountResponse, AccountPatch> {
    * @param body Fields to change (OpenAPI {@link AccountPatch}). Omitting `custom_fields` leaves them unchanged; including it replaces the full set — see API docs.
    * @see https://dev.frontapp.com/reference/update-account
    */
-  async update(body: AccountPatch | Partial<AccountPatch>): Promise<void> {
-    await this.patchReplaceFromResponse(body);
+  async update(body: AccountPatch | Partial<AccountPatch>): Promise<void>;
+  async update(accountId: string, body: AccountPatch | Partial<AccountPatch>): Promise<void>;
+  async update(
+    bodyOrAccountId: AccountPatch | Partial<AccountPatch> | string,
+    directBody?: AccountPatch | Partial<AccountPatch>,
+  ): Promise<void> {
+    if (typeof bodyOrAccountId === "string") {
+      await this.target(bodyOrAccountId).update(directBody ?? {});
+      return;
+    }
+    await this.patchReplaceFromResponse(bodyOrAccountId);
+  }
+
+  override async delete(accountId?: string): Promise<void> {
+    if (accountId === undefined) {
+      await super.delete();
+      return;
+    }
+    await this.target(accountId).delete();
   }
 
   /**
@@ -166,14 +183,25 @@ export class FrontAccount extends FrontResource<AccountResponse, AccountPatch> {
    */
   async listContacts(
     query?: ListAccountContactsQuery,
+  ): Promise<WithNormalizedPagination<ListAccountContactsResponse>>;
+  async listContacts(
+    accountId: string,
+    query?: ListAccountContactsQuery,
+  ): Promise<WithNormalizedPagination<ListAccountContactsResponse>>;
+  async listContacts(
+    queryOrAccountId?: ListAccountContactsQuery | string,
+    directQuery?: ListAccountContactsQuery,
   ): Promise<WithNormalizedPagination<ListAccountContactsResponse>> {
+    if (typeof queryOrAccountId === "string") {
+      return await this.target(queryOrAccountId).listContacts(directQuery);
+    }
     const path = FrontBase.expandPath("/accounts/{account_id}/contacts", {
       account_id: this.id,
     });
     return await this.base.requestJson<WithNormalizedPagination<ListAccountContactsResponse>>(
       "GET",
       path,
-      { query: queryFromListAccountContacts(query) },
+      { query: queryFromListAccountContacts(queryOrAccountId) },
     );
   }
 
@@ -185,11 +213,17 @@ export class FrontAccount extends FrontResource<AccountResponse, AccountPatch> {
    * @param body Contact ids or resource aliases (OpenAPI {@link ContactIds}).
    * @see https://dev.frontapp.com/reference/add-contact-to-account
    */
-  async addContacts(body: ContactIds): Promise<void> {
+  async addContacts(body: ContactIds): Promise<void>;
+  async addContacts(accountId: string, body: ContactIds): Promise<void>;
+  async addContacts(bodyOrAccountId: ContactIds | string, directBody?: ContactIds): Promise<void> {
+    if (typeof bodyOrAccountId === "string") {
+      await this.target(bodyOrAccountId).addContacts(directBody ?? { contact_ids: [] });
+      return;
+    }
     const path = FrontBase.expandPath("/accounts/{account_id}/contacts", {
       account_id: this.id,
     });
-    await this.base.requestJson<undefined>("POST", path, { body });
+    await this.base.requestJson<undefined>("POST", path, { body: bodyOrAccountId });
   }
 
   /**
@@ -200,25 +234,20 @@ export class FrontAccount extends FrontResource<AccountResponse, AccountPatch> {
    * @param body Contact ids or resource aliases (OpenAPI {@link ContactIds}).
    * @see https://dev.frontapp.com/reference/remove-contact-from-account
    */
-  async removeContacts(body: ContactIds): Promise<void> {
+  async removeContacts(body: ContactIds): Promise<void>;
+  async removeContacts(accountId: string, body: ContactIds): Promise<void>;
+  async removeContacts(
+    bodyOrAccountId: ContactIds | string,
+    directBody?: ContactIds,
+  ): Promise<void> {
+    if (typeof bodyOrAccountId === "string") {
+      await this.target(bodyOrAccountId).removeContacts(directBody ?? { contact_ids: [] });
+      return;
+    }
     const path = FrontBase.expandPath("/accounts/{account_id}/contacts", {
       account_id: this.id,
     });
-    await this.base.requestJson<undefined>("DELETE", path, { body });
-  }
-}
-
-/**
- * Company accounts (`GET/POST /accounts`, `GET/PATCH/DELETE /accounts/{account_id}`) and account custom-field definitions.
- *
- * @see https://dev.frontapp.com/reference/accounts
- */
-export class FrontAccounts {
-  private readonly base: FrontBase;
-
-  /** @param base Shared HTTP client (in practice the `Front` instance). */
-  constructor(base: FrontBase) {
-    this.base = base;
+    await this.base.requestJson<undefined>("DELETE", path, { body: bodyOrAccountId });
   }
 
   /**
@@ -247,11 +276,11 @@ export class FrontAccounts {
    * @param body Account fields (OpenAPI {@link Account}).
    * @see https://dev.frontapp.com/reference/create-account
    */
-  async create(body: Account): Promise<FrontAccount> {
+  async create(body: Account): Promise<FrontAccounts> {
     const data = await this.base.requestJson<AccountResponse>("POST", "/accounts", {
       body,
     });
-    return new FrontAccount(this.base, data);
+    return new FrontAccounts(this.base, data);
   }
 
   /**
@@ -262,12 +291,13 @@ export class FrontAccounts {
    * @param accountId Account id or supported [resource alias](https://dev.frontapp.com/docs/resource-aliases-1) (domain, external id).
    * @see https://dev.frontapp.com/reference/fetch-an-account
    */
-  async get(accountId: string): Promise<FrontAccount> {
-    const path = FrontBase.expandPath("/accounts/{account_id}", {
-      account_id: accountId,
-    });
-    const data = await this.base.requestJson<AccountResponse>("GET", path);
-    return new FrontAccount(this.base, data);
+  async get(accountId: string): Promise<FrontAccounts> {
+    return await this.target(accountId).refresh();
+  }
+
+  /** Target an account by ID without fetching it first. */
+  private target(accountId: string): FrontAccounts {
+    return new FrontAccounts(this.base, undefined, accountId);
   }
 
   /**

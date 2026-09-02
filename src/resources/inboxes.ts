@@ -62,26 +62,43 @@ const assertInboxId = (snapshot: InboxResponse): string => {
  *
  * @see https://dev.frontapp.com/reference/inboxes
  */
-export class FrontInbox {
-  private state: InboxSnapshot;
+export class FrontInboxes {
+  private state: InboxSnapshot | undefined;
   private readonly base: FrontBase;
+  private readonly inboxId: string | undefined;
 
-  constructor(base: FrontBase, snapshot: InboxResponse) {
+  constructor(base: FrontBase, snapshot?: InboxResponse, inboxId?: string) {
     this.base = base;
+    if (snapshot === undefined) {
+      this.inboxId = inboxId;
+      return;
+    }
     const id = assertInboxId(snapshot);
+    this.inboxId = id;
     this.state = structuredClone({ ...snapshot, id });
   }
 
   get id(): string {
-    return this.state.id;
+    const id = this.state?.id ?? this.inboxId;
+    if (id === undefined) {
+      throw new Error("This inbox operation requires an ID.");
+    }
+    return id;
   }
 
   get links(): InboxResponse["_links"] {
-    return this.state._links;
+    return this.requireState()._links;
   }
 
   /** Full inbox JSON from the last fetch or list/create response. */
   get data(): Readonly<InboxSnapshot> {
+    return this.requireState();
+  }
+
+  private requireState(): InboxSnapshot {
+    if (this.state === undefined) {
+      throw new Error("This inbox operation requires fetched resource data.");
+    }
     return this.state;
   }
 
@@ -106,7 +123,12 @@ export class FrontInbox {
    *
    * **Required scope:** `channels:read`
    */
-  async listChannels(): Promise<WithNormalizedPagination<ListInboxChannelsResponse>> {
+  async listChannels(
+    inboxId?: string,
+  ): Promise<WithNormalizedPagination<ListInboxChannelsResponse>> {
+    if (inboxId !== undefined) {
+      return await this.target(inboxId).listChannels();
+    }
     const path = FrontBase.expandPath("/inboxes/{inbox_id}/channels", {
       inbox_id: this.id,
     });
@@ -123,7 +145,18 @@ export class FrontInbox {
    */
   async listConversations(
     query?: ListInboxConversationsQuery,
+  ): Promise<WithNormalizedPagination<ListInboxConversationsResponse>>;
+  async listConversations(
+    inboxId: string,
+    query?: ListInboxConversationsQuery,
+  ): Promise<WithNormalizedPagination<ListInboxConversationsResponse>>;
+  async listConversations(
+    inboxIdOrQuery?: string | ListInboxConversationsQuery,
+    directQuery?: ListInboxConversationsQuery,
   ): Promise<WithNormalizedPagination<ListInboxConversationsResponse>> {
+    if (typeof inboxIdOrQuery === "string") {
+      return await this.target(inboxIdOrQuery).listConversations(directQuery);
+    }
     const path = FrontBase.expandPath("/inboxes/{inbox_id}/conversations", {
       inbox_id: this.id,
     });
@@ -131,7 +164,7 @@ export class FrontInbox {
       "GET",
       path,
       {
-        query: queryFromListInboxConversations(query),
+        query: queryFromListInboxConversations(inboxIdOrQuery),
       },
     );
   }
@@ -141,12 +174,20 @@ export class FrontInbox {
    *
    * **Required scope:** `messages:write`
    */
-  async importMessage(body: ImportMessage): Promise<ImportInboxMessageResponse> {
+  async importMessage(body: ImportMessage): Promise<ImportInboxMessageResponse>;
+  async importMessage(inboxId: string, body: ImportMessage): Promise<ImportInboxMessageResponse>;
+  async importMessage(
+    inboxIdOrBody: string | ImportMessage,
+    directBody?: ImportMessage,
+  ): Promise<ImportInboxMessageResponse> {
+    if (typeof inboxIdOrBody === "string") {
+      return await this.target(inboxIdOrBody).importMessage(directBody ?? ({} as ImportMessage));
+    }
     const path = FrontBase.expandPath("/inboxes/{inbox_id}/imported_messages", {
       inbox_id: this.id,
     });
     return await this.base.requestJson<ImportInboxMessageResponse>("POST", path, {
-      body,
+      body: inboxIdOrBody,
     });
   }
 
@@ -155,7 +196,12 @@ export class FrontInbox {
    *
    * **Required scope:** `teammates:read`
    */
-  async listTeammateAccess(): Promise<WithNormalizedPagination<ListInboxAccessResponse>> {
+  async listTeammateAccess(
+    inboxId?: string,
+  ): Promise<WithNormalizedPagination<ListInboxAccessResponse>> {
+    if (inboxId !== undefined) {
+      return await this.target(inboxId).listTeammateAccess();
+    }
     const path = FrontBase.expandPath("/inboxes/{inbox_id}/teammates", {
       inbox_id: this.id,
     });
@@ -170,11 +216,20 @@ export class FrontInbox {
    *
    * **Required scope:** `inboxes:write`
    */
-  async addTeammateAccess(body: TeammateIds): Promise<void> {
+  async addTeammateAccess(body: TeammateIds): Promise<void>;
+  async addTeammateAccess(inboxId: string, body: TeammateIds): Promise<void>;
+  async addTeammateAccess(
+    inboxIdOrBody: string | TeammateIds,
+    directBody?: TeammateIds,
+  ): Promise<void> {
+    if (typeof inboxIdOrBody === "string") {
+      await this.target(inboxIdOrBody).addTeammateAccess(directBody ?? { teammate_ids: [] });
+      return;
+    }
     const path = FrontBase.expandPath("/inboxes/{inbox_id}/teammates", {
       inbox_id: this.id,
     });
-    await this.base.requestJson<undefined>("POST", path, { body });
+    await this.base.requestJson<undefined>("POST", path, { body: inboxIdOrBody });
   }
 
   /**
@@ -182,30 +237,21 @@ export class FrontInbox {
    *
    * **Required scope:** `inboxes:write`
    */
-  async removeTeammateAccess(body: TeammateIds): Promise<void> {
+  async removeTeammateAccess(body: TeammateIds): Promise<void>;
+  async removeTeammateAccess(inboxId: string, body: TeammateIds): Promise<void>;
+  async removeTeammateAccess(
+    inboxIdOrBody: string | TeammateIds,
+    directBody?: TeammateIds,
+  ): Promise<void> {
+    if (typeof inboxIdOrBody === "string") {
+      await this.target(inboxIdOrBody).removeTeammateAccess(directBody ?? { teammate_ids: [] });
+      return;
+    }
     const path = FrontBase.expandPath("/inboxes/{inbox_id}/teammates", {
       inbox_id: this.id,
     });
-    await this.base.requestJson<undefined>("DELETE", path, { body });
+    await this.base.requestJson<undefined>("DELETE", path, { body: inboxIdOrBody });
   }
-}
-
-/**
- * Company inbox routes (`/inboxes`, `/inboxes/custom_fields`, `/inboxes/{inbox_id}`).
- *
- * @see https://dev.frontapp.com/reference/inboxes
- */
-export class FrontInboxes {
-  private readonly base: FrontBase;
-
-  constructor(base: FrontBase) {
-    this.base = base;
-  }
-
-  private inbox(inboxId: string): FrontInbox {
-    return new FrontInbox(this.base, { id: inboxId });
-  }
-
   /**
    * List inboxes (`GET /inboxes`).
    *
@@ -223,11 +269,11 @@ export class FrontInboxes {
    *
    * **Required scope:** `inboxes:write`
    */
-  async create(body: CreateInbox): Promise<FrontInbox> {
+  async create(body: CreateInbox): Promise<FrontInboxes> {
     const data = await this.base.requestJson<InboxResponse>("POST", "/inboxes", {
       body,
     });
-    return new FrontInbox(this.base, data);
+    return new FrontInboxes(this.base, data);
   }
 
   /**
@@ -247,72 +293,12 @@ export class FrontInboxes {
    *
    * **Required scope:** `inboxes:read`
    */
-  async get(inboxId: string): Promise<FrontInbox> {
-    const path = FrontBase.expandPath("/inboxes/{inbox_id}", {
-      inbox_id: inboxId,
-    });
-    const data = await this.base.requestJson<InboxResponse>("GET", path);
-    return new FrontInbox(this.base, data);
+  async get(inboxId: string): Promise<FrontInboxes> {
+    return await this.target(inboxId).refresh();
   }
 
-  /**
-   * List channels in an inbox (`GET /inboxes/{inbox_id}/channels`).
-   *
-   * **Required scope:** `channels:read`
-   */
-  async listChannels(
-    inboxId: string,
-  ): Promise<WithNormalizedPagination<ListInboxChannelsResponse>> {
-    return await this.inbox(inboxId).listChannels();
-  }
-
-  /**
-   * List conversations in an inbox (`GET /inboxes/{inbox_id}/conversations`).
-   *
-   * **Required scope:** `conversations:read`
-   */
-  async listConversations(
-    inboxId: string,
-    query?: ListInboxConversationsQuery,
-  ): Promise<WithNormalizedPagination<ListInboxConversationsResponse>> {
-    return await this.inbox(inboxId).listConversations(query);
-  }
-
-  /**
-   * Import a message into an inbox (`POST /inboxes/{inbox_id}/imported_messages`).
-   *
-   * **Required scope:** `messages:write`
-   */
-  async importMessage(inboxId: string, body: ImportMessage): Promise<ImportInboxMessageResponse> {
-    return await this.inbox(inboxId).importMessage(body);
-  }
-
-  /**
-   * List teammates with access (`GET /inboxes/{inbox_id}/teammates`).
-   *
-   * **Required scope:** `teammates:read`
-   */
-  async listTeammateAccess(
-    inboxId: string,
-  ): Promise<WithNormalizedPagination<ListInboxAccessResponse>> {
-    return await this.inbox(inboxId).listTeammateAccess();
-  }
-
-  /**
-   * Add teammate access (`POST /inboxes/{inbox_id}/teammates`). The API returns `204`.
-   *
-   * **Required scope:** `inboxes:write`
-   */
-  async addTeammateAccess(inboxId: string, body: TeammateIds): Promise<void> {
-    await this.inbox(inboxId).addTeammateAccess(body);
-  }
-
-  /**
-   * Remove teammate access (`DELETE /inboxes/{inbox_id}/teammates`). The API returns `204`.
-   *
-   * **Required scope:** `inboxes:write`
-   */
-  async removeTeammateAccess(inboxId: string, body: TeammateIds): Promise<void> {
-    await this.inbox(inboxId).removeTeammateAccess(body);
+  /** Target an inbox by ID without fetching it first. */
+  private target(inboxId: string): FrontInboxes {
+    return new FrontInboxes(this.base, undefined, inboxId);
   }
 }

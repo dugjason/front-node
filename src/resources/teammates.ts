@@ -63,7 +63,7 @@ const teammateResponseToUpdateBody = (state: TeammateResponse): UpdateTeammate =
  *
  * @see https://dev.frontapp.com/reference/teammates
  */
-export class FrontTeammate extends FrontResource<TeammateResponse, UpdateTeammate> {
+export class FrontTeammates extends FrontResource<TeammateResponse, UpdateTeammate> {
   protected selfPath(): string {
     return FrontBase.expandPath("/teammates/{teammate_id}", {
       teammate_id: this.id,
@@ -142,8 +142,20 @@ export class FrontTeammate extends FrontResource<TeammateResponse, UpdateTeammat
    * @param body Fields to change (OpenAPI {@link UpdateTeammate}). Sending `custom_fields` replaces omitted keys — see API docs.
    * @see https://dev.frontapp.com/reference/update-teammate
    */
-  async update(body: UpdateTeammate | Partial<UpdateTeammate>): Promise<void> {
-    await this.patchNoContent(body, mergeTeammateSnapshot);
+  async update(body: UpdateTeammate | Partial<UpdateTeammate>): Promise<void>;
+  async update(teammateId: string, body: UpdateTeammate | Partial<UpdateTeammate>): Promise<void>;
+  async update(
+    bodyOrTeammateId: string | UpdateTeammate | Partial<UpdateTeammate>,
+    body?: UpdateTeammate | Partial<UpdateTeammate>,
+  ): Promise<void> {
+    if (typeof bodyOrTeammateId === "string") {
+      if (body === undefined) {
+        throw new Error("Updating a teammate by ID requires a request body.");
+      }
+      await this.target(bodyOrTeammateId).update(body);
+      return;
+    }
+    await this.patchNoContent(bodyOrTeammateId, mergeTeammateSnapshot);
   }
 
   /**
@@ -156,7 +168,18 @@ export class FrontTeammate extends FrontResource<TeammateResponse, UpdateTeammat
    */
   async listAssignedConversations(
     query?: ListAssignedConversationsQuery,
+  ): Promise<WithNormalizedPagination<ListAssignedConversationsResponse>>;
+  async listAssignedConversations(
+    teammateId: string,
+    query?: ListAssignedConversationsQuery,
+  ): Promise<WithNormalizedPagination<ListAssignedConversationsResponse>>;
+  async listAssignedConversations(
+    queryOrTeammateId?: string | ListAssignedConversationsQuery,
+    query?: ListAssignedConversationsQuery,
   ): Promise<WithNormalizedPagination<ListAssignedConversationsResponse>> {
+    if (typeof queryOrTeammateId === "string") {
+      return await this.target(queryOrTeammateId).listAssignedConversations(query);
+    }
     const path = FrontBase.expandPath("/teammates/{teammate_id}/conversations", {
       teammate_id: this.id,
     });
@@ -164,25 +187,15 @@ export class FrontTeammate extends FrontResource<TeammateResponse, UpdateTeammat
       "GET",
       path,
       {
-        query: queryFromAssignedConversations(query),
+        query: queryFromAssignedConversations(queryOrTeammateId),
       },
     );
   }
-}
-
-/**
- * Company teammates (`GET /teammates`, `GET /teammates/{teammate_id}`).
- *
- * @see https://dev.frontapp.com/reference/teammates
- */
-export class FrontTeammates {
-  private readonly base: FrontBase;
-
-  /** @param base Shared HTTP client (in practice the `Front` instance). */
-  constructor(base: FrontBase) {
-    this.base = base;
-  }
-
+  /**
+   * Company teammates (`GET /teammates`, `GET /teammates/{teammate_id}`).
+   *
+   * @see https://dev.frontapp.com/reference/teammates
+   */
   /**
    * List teammates in the company (`GET /teammates`).
    *
@@ -205,11 +218,14 @@ export class FrontTeammates {
    * @param teammateId Teammate id or supported [resource alias](https://dev.frontapp.com/docs/resource-aliases-1).
    * @see https://dev.frontapp.com/reference/get-teammate
    */
-  async get(teammateId: string): Promise<FrontTeammate> {
-    const path = FrontBase.expandPath("/teammates/{teammate_id}", {
-      teammate_id: teammateId,
-    });
-    const data = await this.base.requestJson<TeammateResponse>("GET", path);
-    return new FrontTeammate(this.base, data);
+  async get(teammateId: string): Promise<FrontTeammates> {
+    const teammate = this.target(teammateId);
+    await teammate.refresh();
+    return teammate;
+  }
+
+  /** Target a teammate by id without calling the API first. */
+  private target(teammateId: string): FrontTeammates {
+    return new FrontTeammates(this.base, undefined, teammateId);
   }
 }

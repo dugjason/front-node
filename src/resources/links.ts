@@ -85,7 +85,7 @@ const linkResponseToUpdateBody = (state: LinkResponse): UpdateLink => ({
  *
  * @see https://dev.frontapp.com/reference/links
  */
-export class FrontLink extends FrontResource<LinkResponse, UpdateLink> {
+export class FrontLinks extends FrontResource<LinkResponse, UpdateLink> {
   protected selfPath(): string {
     return FrontBase.expandPath("/links/{link_id}", { link_id: this.id });
   }
@@ -113,7 +113,10 @@ export class FrontLink extends FrontResource<LinkResponse, UpdateLink> {
   /**
    * The Front API does not expose `DELETE /links/{link_id}` on this path.
    */
-  override delete(): Promise<void> {
+  override delete(linkId?: string): Promise<void> {
+    if (linkId !== undefined) {
+      return this.target(linkId).delete();
+    }
     return Promise.reject(
       new Error(`Deleting link ${this.id} is not supported by the Front REST API for this path.`),
     );
@@ -128,8 +131,17 @@ export class FrontLink extends FrontResource<LinkResponse, UpdateLink> {
    *
    * **Required scope:** `links:write`
    */
-  async update(body: UpdateLink | Partial<UpdateLink>): Promise<void> {
-    await this.patchNoContent(body, mergeLinkSnapshot);
+  async update(body: UpdateLink | Partial<UpdateLink>): Promise<void>;
+  async update(linkId: string, body: UpdateLink | Partial<UpdateLink>): Promise<void>;
+  async update(
+    bodyOrLinkId: UpdateLink | Partial<UpdateLink> | string,
+    directBody?: UpdateLink | Partial<UpdateLink>,
+  ): Promise<void> {
+    if (typeof bodyOrLinkId === "string") {
+      await this.target(bodyOrLinkId).update(directBody ?? {});
+      return;
+    }
+    await this.patchNoContent(bodyOrLinkId, mergeLinkSnapshot);
   }
 
   /**
@@ -139,30 +151,27 @@ export class FrontLink extends FrontResource<LinkResponse, UpdateLink> {
    */
   async listConversations(
     query?: ListLinkConversationsQuery,
+  ): Promise<WithNormalizedPagination<ListLinkConversationsResponse>>;
+  async listConversations(
+    linkId: string,
+    query?: ListLinkConversationsQuery,
+  ): Promise<WithNormalizedPagination<ListLinkConversationsResponse>>;
+  async listConversations(
+    queryOrLinkId?: ListLinkConversationsQuery | string,
+    directQuery?: ListLinkConversationsQuery,
   ): Promise<WithNormalizedPagination<ListLinkConversationsResponse>> {
+    if (typeof queryOrLinkId === "string") {
+      return await this.target(queryOrLinkId).listConversations(directQuery);
+    }
     const path = FrontBase.expandPath("/links/{link_id}/conversations", {
       link_id: this.id,
     });
     return await this.base.requestJson<WithNormalizedPagination<ListLinkConversationsResponse>>(
       "GET",
       path,
-      { query: queryFromListLinkConversations(query) },
+      { query: queryFromListLinkConversations(queryOrLinkId) },
     );
   }
-}
-
-/**
- * Links (`/links`, `/links/custom_fields`, `/links/{link_id}`).
- *
- * @see https://dev.frontapp.com/reference/links
- */
-export class FrontLinks {
-  private readonly base: FrontBase;
-
-  constructor(base: FrontBase) {
-    this.base = base;
-  }
-
   /**
    * `GET /links`.
    *
@@ -181,11 +190,11 @@ export class FrontLinks {
    *
    * **Required scope:** `links:write`
    */
-  async create(body: CreateLink): Promise<FrontLink> {
+  async create(body: CreateLink): Promise<FrontLinks> {
     const data = await this.base.requestJson<LinkResponse>("POST", "/links", {
       body,
     });
-    return new FrontLink(this.base, data);
+    return new FrontLinks(this.base, data);
   }
 
   /**
@@ -205,9 +214,12 @@ export class FrontLinks {
    *
    * **Required scope:** `links:read`
    */
-  async get(linkId: string): Promise<FrontLink> {
-    const path = FrontBase.expandPath("/links/{link_id}", { link_id: linkId });
-    const data = await this.base.requestJson<LinkResponse>("GET", path);
-    return new FrontLink(this.base, data);
+  async get(linkId: string): Promise<FrontLinks> {
+    return await this.target(linkId).refresh();
+  }
+
+  /** Target a link by ID without fetching it first. */
+  private target(linkId: string): FrontLinks {
+    return new FrontLinks(this.base, undefined, linkId);
   }
 }
