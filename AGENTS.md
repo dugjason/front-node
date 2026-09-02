@@ -5,7 +5,7 @@ This project uses **Ultracite**, a zero-config preset that enforces strict code 
 ## Quick Reference
 
 - **Format + lint (auto-fix)**: `bun run fix`
-- **Full gate**: `bun run check` (Ultracite / Biome, TypeScript)
+- **Full gate**: `bun run check` (Ultracite with Oxlint/Oxfmt, TypeScript)
 - **Ultracite doctor** (optional): `bun x ultracite doctor` — see `.agents/LINTING_FORMATTING.md` for caveats.
 
 Oxlint + Oxfmt provide fast linting and formatting. Most issues are auto-fixable via `bun run fix`.
