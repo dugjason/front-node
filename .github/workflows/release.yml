@@ -45,10 +45,10 @@ jobs:
       - name: Create release PR or publish
         uses: changesets/action@v2
         with:
-          version: bun run version-packages
-          publish: bun run release
-          commit: Version packages
-          title: Version packages
+          version-script: bun run version-packages
+          publish-script: bun run release
+          commit-message: Version packages
+          pr-title: Version packages
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
