@@ -4,9 +4,10 @@ This project uses **Ultracite**, a zero-config preset that enforces strict code 
 
 ## Quick Reference
 
-- **Format + lint (auto-fix)**: `bun run fix` — runs `ultracite fix` (Biome via `biome.jsonc` extending `ultracite/biome/core`).
-- **Full gate (CI / pre-push)**: `bun run check` — `ultracite check` and `tsc --noEmit`.
-- **Format-only**: `bun run fmt` / `bun run fmt:check` — `biome format` (same formatter Ultracite uses here). **`oxfmt.config.mjs`** extends `ultracite/oxfmt` per the [Oxlint migration](https://docs.ultracite.ai/migrate/oxlint) for oxfmt/IDE or `bunx oxfmt -c oxfmt.config.mjs .`; `oxlint.config.mjs` extends `ultracite/oxlint/core`.
+- **Format + lint (auto-fix)**: `bun run fix` — runs `ultracite fix` with Oxfmt and Oxlint.
+- **Full gate (CI / pre-push)**: `bun run check` — runs `ultracite check` and `tsc --noEmit`.
+- **Format-only**: `bun run fmt` / `bun run fmt:check` — runs Oxfmt with `oxfmt.config.ts`, which extends `ultracite/oxfmt`.
+- **Lint-only**: `bun run lint` — runs Oxlint with `oxlint.config.ts`, which extends `ultracite/oxlint/core`.
 
 Oxlint + Oxfmt provide fast linting and formatting. Most issues are auto-fixable via `bun run fix`.
 
