@@ -14,14 +14,14 @@ const emptySeenBody: Record<string, never> = {};
  *
  * @see https://dev.frontapp.com/reference/messages
  */
-export class FrontMessage {
+export class FrontMessages {
   private readonly base: FrontBase;
-  private readonly messageId: string;
+  private readonly boundMessageId: string | undefined;
   private snapshot: MessageResponse | undefined;
 
-  constructor(base: FrontBase, messageId: string, snapshot?: MessageResponse) {
+  constructor(base: FrontBase, messageId?: string, snapshot?: MessageResponse) {
     this.base = base;
-    this.messageId = messageId;
+    this.boundMessageId = messageId;
     this.snapshot = snapshot;
   }
 
@@ -53,9 +53,19 @@ export class FrontMessage {
    *
    * **Required scope:** `messages:read`
    */
-  async fetchRaw(init?: { headers?: Record<string, string | undefined> }): Promise<Response> {
+  async fetchRaw(init?: { headers?: Record<string, string | undefined> }): Promise<Response>;
+  async fetchRaw(
+    messageId: string,
+    init?: { headers?: Record<string, string | undefined> },
+  ): Promise<Response>;
+  async fetchRaw(
+    messageIdOrInit?: string | { headers?: Record<string, string | undefined> },
+    optionalInit?: { headers?: Record<string, string | undefined> },
+  ): Promise<Response> {
+    const messageId = typeof messageIdOrInit === "string" ? messageIdOrInit : this.messageId;
+    const init = typeof messageIdOrInit === "string" ? optionalInit : messageIdOrInit;
     const path = FrontBase.expandPath("/messages/{message_id}", {
-      message_id: this.messageId,
+      message_id: messageId,
     });
     const headers: Record<string, string | undefined> = {
       ...init?.headers,
@@ -71,10 +81,16 @@ export class FrontMessage {
    *
    * **Required scope:** `attachments:read`
    */
-  async downloadAttachment(attachmentLinkId: string): Promise<Response> {
+  async downloadAttachment(
+    messageIdOrAttachmentLinkId: string,
+    optionalAttachmentLinkId?: string,
+  ): Promise<Response> {
+    const messageId =
+      optionalAttachmentLinkId === undefined ? this.messageId : messageIdOrAttachmentLinkId;
+    const attachmentLinkId = optionalAttachmentLinkId ?? messageIdOrAttachmentLinkId;
     const path = FrontBase.expandPath("/messages/{message_id}/download/{attachment_link_id}", {
       attachment_link_id: attachmentLinkId,
-      message_id: this.messageId,
+      message_id: messageId,
     });
     return await this.base.requestWithoutParsingBody("GET", path);
   }
@@ -84,9 +100,11 @@ export class FrontMessage {
    *
    * **Required scope:** `messages:read`
    */
-  async getSeen(): Promise<WithNormalizedPagination<ListMessageSeenResponse>> {
+  async getSeen(
+    messageId = this.messageId,
+  ): Promise<WithNormalizedPagination<ListMessageSeenResponse>> {
     const path = FrontBase.expandPath("/messages/{message_id}/seen", {
-      message_id: this.messageId,
+      message_id: messageId,
     });
     return await this.base.requestJson<WithNormalizedPagination<ListMessageSeenResponse>>(
       "GET",
@@ -99,43 +117,32 @@ export class FrontMessage {
    *
    * **Required scope:** `messages:write`
    */
-  async markSeen(): Promise<void> {
+  async markSeen(messageId = this.messageId): Promise<void> {
     const path = FrontBase.expandPath("/messages/{message_id}/seen", {
-      message_id: this.messageId,
+      message_id: messageId,
     });
     await this.base.requestJson<undefined>("POST", path, {
       body: emptySeenBody,
     });
   }
-}
 
-/**
- * Messages (`/messages/{message_id}`).
- *
- * @see https://dev.frontapp.com/reference/messages
- */
-export class FrontMessages {
-  private readonly base: FrontBase;
-
-  constructor(base: FrontBase) {
-    this.base = base;
+  private get messageId(): string {
+    if (this.boundMessageId === undefined) {
+      throw new Error("This message operation requires an ID.");
+    }
+    return this.boundMessageId;
   }
 
   /**
-   * `GET /messages/{message_id}` — returns a {@link FrontMessage} with the response loaded.
+   * `GET /messages/{message_id}` — returns a hydrated resource with the response loaded.
    *
    * **Required scope:** `messages:read`
    */
-  async get(messageId: string): Promise<FrontMessage> {
+  async get(messageId: string): Promise<FrontMessages> {
     const path = FrontBase.expandPath("/messages/{message_id}", {
       message_id: messageId,
     });
     const data = await this.base.requestJson<MessageResponse>("GET", path);
-    return new FrontMessage(this.base, messageId, data);
-  }
-
-  /** Target a message by id without calling the API first. */
-  withId(messageId: string): FrontMessage {
-    return new FrontMessage(this.base, messageId);
+    return new FrontMessages(this.base, messageId, data);
   }
 }

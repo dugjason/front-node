@@ -55,7 +55,7 @@ const channelResponseToUpdateBody = (state: ChannelResponse): UpdateChannel => (
  *
  * @see https://dev.frontapp.com/reference/channels
  */
-export class FrontChannel extends FrontResource<ChannelResponse, UpdateChannel> {
+export class FrontChannels extends FrontResource<ChannelResponse, UpdateChannel> {
   protected selfPath(): string {
     return FrontBase.expandPath("/channels/{channel_id}", {
       channel_id: this.id,
@@ -127,8 +127,18 @@ export class FrontChannel extends FrontResource<ChannelResponse, UpdateChannel> 
    *
    * @see https://dev.frontapp.com/reference/update-channel
    */
-  async update(body: UpdateChannel | Partial<UpdateChannel>): Promise<void> {
-    await this.patchNoContent(body, mergeChannelSnapshot);
+  async update(body: UpdateChannel | Partial<UpdateChannel>): Promise<void>;
+  async update(channelId: string, body: UpdateChannel | Partial<UpdateChannel>): Promise<void>;
+  async update(
+    channelIdOrBody: string | UpdateChannel | Partial<UpdateChannel>,
+    optionalBody?: UpdateChannel | Partial<UpdateChannel>,
+  ): Promise<void> {
+    const { body, id } = this.resolveIdAndBody(channelIdOrBody, optionalBody);
+    const path = FrontBase.expandPath("/channels/{channel_id}", { channel_id: id });
+    await this.base.requestJson<undefined>("PATCH", path, { body });
+    if (this.hasState() && id === this.id) {
+      this.replaceState(mergeChannelSnapshot(this.state, body));
+    }
   }
 
   /**
@@ -138,9 +148,15 @@ export class FrontChannel extends FrontResource<ChannelResponse, UpdateChannel> 
    *
    * @see https://dev.frontapp.com/reference/create-draft
    */
-  async createDraft(body: CreateDraft): Promise<MessageResponse> {
+  async createDraft(body: CreateDraft): Promise<MessageResponse>;
+  async createDraft(channelId: string, body: CreateDraft): Promise<MessageResponse>;
+  async createDraft(
+    channelIdOrBody: string | CreateDraft,
+    optionalBody?: CreateDraft,
+  ): Promise<MessageResponse> {
+    const { body, id } = this.resolveIdAndBody(channelIdOrBody, optionalBody);
     const path = FrontBase.expandPath("/channels/{channel_id}/drafts", {
-      channel_id: this.id,
+      channel_id: id,
     });
     return await this.base.requestJson<MessageResponse>("POST", path, { body });
   }
@@ -152,9 +168,15 @@ export class FrontChannel extends FrontResource<ChannelResponse, UpdateChannel> 
    *
    * @see https://dev.frontapp.com/reference/receive-custom-messages
    */
-  async receiveCustomMessage(body: CustomMessage): Promise<AcceptedMessageBody> {
+  async receiveCustomMessage(body: CustomMessage): Promise<AcceptedMessageBody>;
+  async receiveCustomMessage(channelId: string, body: CustomMessage): Promise<AcceptedMessageBody>;
+  async receiveCustomMessage(
+    channelIdOrBody: string | CustomMessage,
+    optionalBody?: CustomMessage,
+  ): Promise<AcceptedMessageBody> {
+    const { body, id } = this.resolveIdAndBody(channelIdOrBody, optionalBody);
     const path = FrontBase.expandPath("/channels/{channel_id}/incoming_messages", {
-      channel_id: this.id,
+      channel_id: id,
     });
     return await this.base.requestJson<AcceptedMessageBody>("POST", path, {
       body,
@@ -168,9 +190,15 @@ export class FrontChannel extends FrontResource<ChannelResponse, UpdateChannel> 
    *
    * @see https://dev.frontapp.com/reference/create-message
    */
-  async createMessage(body: OutboundMessage): Promise<AcceptedMessageBody> {
+  async createMessage(body: OutboundMessage): Promise<AcceptedMessageBody>;
+  async createMessage(channelId: string, body: OutboundMessage): Promise<AcceptedMessageBody>;
+  async createMessage(
+    channelIdOrBody: string | OutboundMessage,
+    optionalBody?: OutboundMessage,
+  ): Promise<AcceptedMessageBody> {
+    const { body, id } = this.resolveIdAndBody(channelIdOrBody, optionalBody);
     const path = FrontBase.expandPath("/channels/{channel_id}/messages", {
-      channel_id: this.id,
+      channel_id: id,
     });
     return await this.base.requestJson<AcceptedMessageBody>("POST", path, {
       body,
@@ -184,25 +212,12 @@ export class FrontChannel extends FrontResource<ChannelResponse, UpdateChannel> 
    *
    * @see https://dev.frontapp.com/reference/validate-channel
    */
-  async validate(): Promise<AcceptedBody> {
+  async validate(channelId?: string): Promise<AcceptedBody> {
+    const id = channelId ?? this.id;
     const path = FrontBase.expandPath("/channels/{channel_id}/validate", {
-      channel_id: this.id,
+      channel_id: id,
     });
     return await this.base.requestJson<AcceptedBody>("POST", path);
-  }
-}
-
-/**
- * Company channels (`GET /channels`, `GET /channels/{channel_id}`).
- *
- * @see https://dev.frontapp.com/reference/channels
- */
-export class FrontChannels {
-  private readonly base: FrontBase;
-
-  /** @param base Shared HTTP client (in practice the `Front` instance). */
-  constructor(base: FrontBase) {
-    this.base = base;
   }
 
   /**
@@ -227,12 +242,12 @@ export class FrontChannels {
    * @param channelId Channel id or supported [resource alias](https://dev.frontapp.com/docs/resource-aliases-1) (e.g. channel address).
    * @see https://dev.frontapp.com/reference/get-channel
    */
-  async get(channelId: string): Promise<FrontChannel> {
+  async get(channelId: string): Promise<FrontChannels> {
     const path = FrontBase.expandPath("/channels/{channel_id}", {
       channel_id: channelId,
     });
     const data = await this.base.requestJson<ChannelResponse>("GET", path);
-    return new FrontChannel(this.base, data);
+    return new FrontChannels(this.base, data);
   }
 
   /**
@@ -247,5 +262,18 @@ export class FrontChannels {
       inbox_id: inboxId,
     });
     await this.base.requestJson<undefined>("POST", path, { body });
+  }
+
+  private resolveIdAndBody<TBody>(
+    idOrBody: string | TBody,
+    optionalBody: TBody | undefined,
+  ): { body: TBody; id: string } {
+    if (typeof idOrBody === "string") {
+      if (optionalBody === undefined) {
+        throw new Error("A request body is required.");
+      }
+      return { body: optionalBody, id: idOrBody };
+    }
+    return { body: idOrBody, id: this.id };
   }
 }

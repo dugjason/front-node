@@ -46,14 +46,14 @@ const templateResponseToUpdateBody = (state: MessageTemplateResponse): UpdateMes
  *
  * @see https://dev.frontapp.com/reference/message-templates
  */
-export class FrontMessageTemplate extends FrontResource<
+export class FrontMessageTemplates extends FrontResource<
   MessageTemplateResponse,
   UpdateMessageTemplate
 > {
   private folderIdForUpdate: string | null | undefined;
 
-  constructor(base: FrontBase, snapshot: MessageTemplateResponse) {
-    super(base, snapshot);
+  constructor(base: FrontBase, snapshot?: MessageTemplateResponse, messageTemplateId?: string) {
+    super(base, snapshot, messageTemplateId);
     this.folderIdForUpdate = undefined;
   }
 
@@ -122,12 +122,35 @@ export class FrontMessageTemplate extends FrontResource<
     return body;
   }
 
-  async update(body: UpdateMessageTemplate | Partial<UpdateMessageTemplate>): Promise<void> {
-    await this.patchReplaceFromResponse(body);
-    if ("folder_id" in body) {
-      this.folderIdForUpdate =
-        body.folder_id === null || body.folder_id === undefined ? undefined : body.folder_id;
+  async update(body: UpdateMessageTemplate | Partial<UpdateMessageTemplate>): Promise<void>;
+  async update(
+    messageTemplateId: string,
+    body: UpdateMessageTemplate | Partial<UpdateMessageTemplate>,
+  ): Promise<void>;
+  async update(
+    bodyOrMessageTemplateId: UpdateMessageTemplate | Partial<UpdateMessageTemplate> | string,
+    directBody?: UpdateMessageTemplate | Partial<UpdateMessageTemplate>,
+  ): Promise<void> {
+    if (typeof bodyOrMessageTemplateId === "string") {
+      await this.target(bodyOrMessageTemplateId).update(directBody ?? {});
+      return;
     }
+    await this.patchReplaceFromResponse(bodyOrMessageTemplateId);
+    if ("folder_id" in bodyOrMessageTemplateId) {
+      this.folderIdForUpdate =
+        bodyOrMessageTemplateId.folder_id === null ||
+        bodyOrMessageTemplateId.folder_id === undefined
+          ? undefined
+          : bodyOrMessageTemplateId.folder_id;
+    }
+  }
+
+  override async delete(messageTemplateId?: string): Promise<void> {
+    if (messageTemplateId === undefined) {
+      await super.delete();
+      return;
+    }
+    await this.target(messageTemplateId).delete();
   }
 
   /**
@@ -135,30 +158,29 @@ export class FrontMessageTemplate extends FrontResource<
    *
    * **Required scope:** `attachments:read`
    */
-  async downloadAttachment(attachmentLinkId: string): Promise<Response> {
+  async downloadAttachment(
+    attachmentLinkIdOrMessageTemplateId: string,
+    directAttachmentLinkId?: string,
+  ): Promise<Response> {
+    if (directAttachmentLinkId !== undefined) {
+      return await this.target(attachmentLinkIdOrMessageTemplateId).downloadAttachment(
+        directAttachmentLinkId,
+      );
+    }
     const path = FrontBase.expandPath(
       "/message_templates/{message_template_id}/download/{attachment_link_id}",
       {
-        attachment_link_id: attachmentLinkId,
+        attachment_link_id: attachmentLinkIdOrMessageTemplateId,
         message_template_id: this.id,
       },
     );
     return await this.base.requestWithoutParsingBody("GET", path);
   }
-}
-
-/**
- * Message templates (`/message_templates`).
- *
- * @see https://dev.frontapp.com/reference/message-templates
- */
-export class FrontMessageTemplates {
-  private readonly base: FrontBase;
-
-  constructor(base: FrontBase) {
-    this.base = base;
-  }
-
+  /**
+   * Message templates (`/message_templates`) collection operations.
+   *
+   * @see https://dev.frontapp.com/reference/message-templates
+   */
   /**
    * List message templates (`GET /message_templates`).
    *
@@ -181,13 +203,13 @@ export class FrontMessageTemplates {
    *
    * **Required scope:** `message_templates:write`
    */
-  async create(body: CreateSharedMessageTemplate): Promise<FrontMessageTemplate> {
+  async create(body: CreateSharedMessageTemplate): Promise<FrontMessageTemplates> {
     const data = await this.base.requestJson<MessageTemplateResponse>(
       "POST",
       "/message_templates",
       { body },
     );
-    return new FrontMessageTemplate(this.base, data);
+    return new FrontMessageTemplates(this.base, data);
   }
 
   /**
@@ -195,11 +217,12 @@ export class FrontMessageTemplates {
    *
    * **Required scope:** `message_templates:read`
    */
-  async get(messageTemplateId: string): Promise<FrontMessageTemplate> {
-    const path = FrontBase.expandPath("/message_templates/{message_template_id}", {
-      message_template_id: messageTemplateId,
-    });
-    const data = await this.base.requestJson<MessageTemplateResponse>("GET", path);
-    return new FrontMessageTemplate(this.base, data);
+  async get(messageTemplateId: string): Promise<FrontMessageTemplates> {
+    return await this.target(messageTemplateId).refresh();
+  }
+
+  /** Target a message template by id without calling the API first. */
+  private target(messageTemplateId: string): FrontMessageTemplates {
+    return new FrontMessageTemplates(this.base, undefined, messageTemplateId);
   }
 }

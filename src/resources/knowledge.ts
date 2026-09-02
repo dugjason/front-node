@@ -56,89 +56,27 @@ const queryFromPaged = (q?: {
 };
 
 /**
- * Knowledge bases (`/knowledge_bases`, `/knowledge_bases/{knowledge_base_id}/…`).
- *
- * @see https://dev.frontapp.com/reference/knowledge-bases
- */
-export class FrontKnowledgeBases {
-  private readonly base: FrontBase;
-
-  constructor(base: FrontBase) {
-    this.base = base;
-  }
-
-  /**
-   * List knowledge bases (`GET /knowledge_bases`).
-   *
-   * **Required scope:** `knowledge_bases:read`
-   */
-  async list(): Promise<WithNormalizedPagination<ListKnowledgeBasesResponse>> {
-    return await this.base.requestJson<WithNormalizedPagination<ListKnowledgeBasesResponse>>(
-      "GET",
-      "/knowledge_bases",
-    );
-  }
-
-  /**
-   * Create a knowledge base (`POST /knowledge_bases`).
-   *
-   * **Required scope:** `knowledge_bases:write`
-   */
-  async create(body: KnowledgeBaseCreate): Promise<FrontKnowledgeBase> {
-    const created = await this.base.requestJson<KnowledgeBaseResponse>("POST", "/knowledge_bases", {
-      body,
-    });
-    return new FrontKnowledgeBase(this.base, created.id, created);
-  }
-
-  /**
-   * Fetch one knowledge base (`GET /knowledge_bases/{knowledge_base_id}`).
-   *
-   * **Required scope:** `knowledge_bases:read`
-   */
-  async get(knowledgeBaseId: string): Promise<FrontKnowledgeBase> {
-    const path = FrontBase.expandPath("/knowledge_bases/{knowledge_base_id}", {
-      knowledge_base_id: knowledgeBaseId,
-    });
-    const slim = await this.base.requestJson<KnowledgeBaseSlimResponse>("GET", path);
-    return new FrontKnowledgeBase(this.base, slim.id, slim);
-  }
-
-  /** Target a knowledge base by id without calling the API first. */
-  withId(knowledgeBaseId: string): FrontKnowledgeBase {
-    return new FrontKnowledgeBase(this.base, knowledgeBaseId);
-  }
-
-  /** Target a knowledge base article by id (`/knowledge_base_articles/{article_id}`). */
-  article(articleId: string): FrontKnowledgeBaseArticle {
-    return new FrontKnowledgeBaseArticle(this.base, articleId);
-  }
-
-  /** Target a knowledge base category by id (`/knowledge_base_categories/{category_id}`). */
-  category(categoryId: string): FrontKnowledgeBaseCategory {
-    return new FrontKnowledgeBaseCategory(this.base, categoryId);
-  }
-}
-
-/**
  * One knowledge base and its `/knowledge_bases/{knowledge_base_id}/…` subtree.
  */
-export class FrontKnowledgeBase {
+export class FrontKnowledgeBases {
   private readonly base: FrontBase;
   private readonly knowledgeBaseId: string;
   private snapshot: KnowledgeBaseSlimResponse | KnowledgeBaseResponse | undefined;
 
   constructor(
     base: FrontBase,
-    knowledgeBaseId: string,
+    knowledgeBaseId?: string,
     snapshot?: KnowledgeBaseSlimResponse | KnowledgeBaseResponse,
   ) {
     this.base = base;
-    this.knowledgeBaseId = knowledgeBaseId;
+    this.knowledgeBaseId = knowledgeBaseId ?? "";
     this.snapshot = snapshot;
   }
 
   get id(): string {
+    if (this.knowledgeBaseId.length === 0) {
+      throw new Error("This knowledge base operation requires an ID.");
+    }
     return this.knowledgeBaseId;
   }
 
@@ -309,6 +247,44 @@ export class FrontKnowledgeBase {
     );
     const data = await this.base.requestJson<KnowledgeBaseCategoryResponse>("POST", path, { body });
     return new FrontKnowledgeBaseCategory(this.base, data.id, data);
+  }
+
+  /** List knowledge bases (`GET /knowledge_bases`). */
+  async list(): Promise<WithNormalizedPagination<ListKnowledgeBasesResponse>> {
+    return await this.base.requestJson<WithNormalizedPagination<ListKnowledgeBasesResponse>>(
+      "GET",
+      "/knowledge_bases",
+    );
+  }
+
+  /** Create a knowledge base (`POST /knowledge_bases`). */
+  async create(body: KnowledgeBaseCreate): Promise<FrontKnowledgeBases> {
+    const created = await this.base.requestJson<KnowledgeBaseResponse>("POST", "/knowledge_bases", {
+      body,
+    });
+    return new FrontKnowledgeBases(this.base, created.id, created);
+  }
+
+  /** Fetch a knowledge base (`GET /knowledge_bases/{knowledge_base_id}`). */
+  async get(knowledgeBaseId: string): Promise<FrontKnowledgeBases> {
+    const knowledgeBase = this.target(knowledgeBaseId);
+    await knowledgeBase.refresh();
+    return knowledgeBase;
+  }
+
+  /** Target a knowledge base by id without calling the API first. */
+  private target(knowledgeBaseId: string): FrontKnowledgeBases {
+    return new FrontKnowledgeBases(this.base, knowledgeBaseId);
+  }
+
+  /** Target a knowledge base article by id without calling the API first. */
+  article(articleId: string): FrontKnowledgeBaseArticle {
+    return new FrontKnowledgeBaseArticle(this.base, articleId);
+  }
+
+  /** Target a knowledge base category by id without calling the API first. */
+  category(categoryId: string): FrontKnowledgeBaseCategory {
+    return new FrontKnowledgeBaseCategory(this.base, categoryId);
   }
 }
 

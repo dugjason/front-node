@@ -127,15 +127,15 @@ const contactSnapshotToUpdateBody = (state: ContactSnapshot): Contact => ({
  *
  * @see https://dev.frontapp.com/reference/contacts
  */
-export class FrontContact extends FrontResource<ContactSnapshot, Contact> {
+export class FrontContacts extends FrontResource<ContactSnapshot, Contact> {
+  constructor(base: FrontBase, snapshot?: ContactResponse, contactId?: string) {
+    super(base, snapshot === undefined ? undefined : toContactSnapshot(snapshot), contactId);
+  }
+
   protected selfPath(): string {
     return FrontBase.expandPath("/contacts/{contact_id}", {
       contact_id: this.id,
     });
-  }
-
-  constructor(base: FrontBase, snapshot: ContactResponse) {
-    super(base, toContactSnapshot(snapshot));
   }
 
   get name(): string | undefined {
@@ -209,8 +209,25 @@ export class FrontContact extends FrontResource<ContactSnapshot, Contact> {
    *
    * @see https://dev.frontapp.com/reference/update-a-contact
    */
-  async update(body: Contact | Partial<Contact>): Promise<void> {
-    await this.patchNoContent(body, mergeContactSnapshot);
+  async update(body: Contact | Partial<Contact>): Promise<void>;
+  async update(contactId: string, body: Contact | Partial<Contact>): Promise<void>;
+  async update(
+    bodyOrContactId: Contact | Partial<Contact> | string,
+    directBody?: Contact | Partial<Contact>,
+  ): Promise<void> {
+    if (typeof bodyOrContactId === "string") {
+      await this.target(bodyOrContactId).update(directBody ?? {});
+      return;
+    }
+    await this.patchNoContent(bodyOrContactId, mergeContactSnapshot);
+  }
+
+  override async delete(contactId?: string): Promise<void> {
+    if (contactId === undefined) {
+      await super.delete();
+      return;
+    }
+    await this.target(contactId).delete();
   }
 
   /**
@@ -233,7 +250,18 @@ export class FrontContact extends FrontResource<ContactSnapshot, Contact> {
    */
   async listConversations(
     query?: ListContactConversationsQuery,
+  ): Promise<WithNormalizedPagination<ListContactConversationsResponse>>;
+  async listConversations(
+    contactId: string,
+    query?: ListContactConversationsQuery,
+  ): Promise<WithNormalizedPagination<ListContactConversationsResponse>>;
+  async listConversations(
+    queryOrContactId?: ListContactConversationsQuery | string,
+    directQuery?: ListContactConversationsQuery,
   ): Promise<WithNormalizedPagination<ListContactConversationsResponse>> {
+    if (typeof queryOrContactId === "string") {
+      return await this.target(queryOrContactId).listConversations(directQuery);
+    }
     const path = FrontBase.expandPath("/contacts/{contact_id}/conversations", {
       contact_id: this.id,
     });
@@ -241,7 +269,7 @@ export class FrontContact extends FrontResource<ContactSnapshot, Contact> {
       "GET",
       path,
       {
-        query: queryFromListContactConversations(query),
+        query: queryFromListContactConversations(queryOrContactId),
       },
     );
   }
@@ -253,13 +281,22 @@ export class FrontContact extends FrontResource<ContactSnapshot, Contact> {
    *
    * @see https://dev.frontapp.com/reference/add-contact-handle
    */
-  async addHandle(body: ContactHandle): Promise<void> {
+  async addHandle(body: ContactHandle): Promise<void>;
+  async addHandle(contactId: string, body: ContactHandle): Promise<void>;
+  async addHandle(
+    bodyOrContactId: ContactHandle | string,
+    directBody?: ContactHandle,
+  ): Promise<void> {
+    if (typeof bodyOrContactId === "string") {
+      await this.target(bodyOrContactId).addHandle(directBody ?? { handle: "", source: "custom" });
+      return;
+    }
     const path = FrontBase.expandPath("/contacts/{contact_id}/handles", {
       contact_id: this.id,
     });
-    await this.base.requestJson<undefined>("POST", path, { body });
+    await this.base.requestJson<undefined>("POST", path, { body: bodyOrContactId });
     const existing = this.pick("handles") ?? [];
-    this.assign("handles", [...existing, body]);
+    this.assign("handles", [...existing, bodyOrContactId]);
   }
 
   /**
@@ -269,15 +306,28 @@ export class FrontContact extends FrontResource<ContactSnapshot, Contact> {
    *
    * @see https://dev.frontapp.com/reference/delete-contact-handle
    */
-  async deleteHandle(body: DeleteContactHandle): Promise<void> {
+  async deleteHandle(body: DeleteContactHandle): Promise<void>;
+  async deleteHandle(contactId: string, body: DeleteContactHandle): Promise<void>;
+  async deleteHandle(
+    bodyOrContactId: DeleteContactHandle | string,
+    directBody?: DeleteContactHandle,
+  ): Promise<void> {
+    if (typeof bodyOrContactId === "string") {
+      await this.target(bodyOrContactId).deleteHandle(
+        directBody ?? { force: false, handle: "", source: "custom" },
+      );
+      return;
+    }
     const path = FrontBase.expandPath("/contacts/{contact_id}/handles", {
       contact_id: this.id,
     });
-    await this.base.requestJson<undefined>("DELETE", path, { body });
+    await this.base.requestJson<undefined>("DELETE", path, { body: bodyOrContactId });
     const existing = this.pick("handles") ?? [];
     this.assign(
       "handles",
-      existing.filter((h) => !(h.handle === body.handle && h.source === body.source)),
+      existing.filter(
+        (h) => !(h.handle === bodyOrContactId.handle && h.source === bodyOrContactId.source),
+      ),
     );
   }
 
@@ -288,7 +338,10 @@ export class FrontContact extends FrontResource<ContactSnapshot, Contact> {
    *
    * @see https://dev.frontapp.com/reference/list-notes
    */
-  async listNotes(): Promise<WithNormalizedPagination<ListNotesResponse>> {
+  async listNotes(contactId?: string): Promise<WithNormalizedPagination<ListNotesResponse>> {
+    if (contactId !== undefined) {
+      return await this.target(contactId).listNotes();
+    }
     const path = FrontBase.expandPath("/contacts/{contact_id}/notes", {
       contact_id: this.id,
     });
@@ -302,29 +355,22 @@ export class FrontContact extends FrontResource<ContactSnapshot, Contact> {
    *
    * @see https://dev.frontapp.com/reference/add-note
    */
-  async addNote(body: CreateContactNote): Promise<ContactNoteResponse> {
+  async addNote(body: CreateContactNote): Promise<ContactNoteResponse>;
+  async addNote(contactId: string, body: CreateContactNote): Promise<ContactNoteResponse>;
+  async addNote(
+    bodyOrContactId: CreateContactNote | string,
+    directBody?: CreateContactNote,
+  ): Promise<ContactNoteResponse> {
+    if (typeof bodyOrContactId === "string") {
+      return await this.target(bodyOrContactId).addNote(directBody ?? { author_id: "", body: "" });
+    }
     const path = FrontBase.expandPath("/contacts/{contact_id}/notes", {
       contact_id: this.id,
     });
     return await this.base.requestJson<ContactNoteResponse>("POST", path, {
-      body,
+      body: bodyOrContactId,
     });
   }
-}
-
-/**
- * Company contacts (`GET/POST /contacts`, custom fields, merge) and single-contact helpers.
- *
- * @see https://dev.frontapp.com/reference/contacts
- */
-export class FrontContacts {
-  private readonly base: FrontBase;
-
-  /** @param base Shared HTTP client (in practice the `Front` instance). */
-  constructor(base: FrontBase) {
-    this.base = base;
-  }
-
   /**
    * List contacts (`GET /contacts`).
    *
@@ -348,9 +394,9 @@ export class FrontContacts {
    *
    * @see https://dev.frontapp.com/reference/create-contact
    */
-  async create(body: CreateContact): Promise<FrontContact> {
+  async create(body: CreateContact): Promise<FrontContacts> {
     const data = await this.base.requestJson<ContactResponse>("POST", "/contacts", { body });
-    return new FrontContact(this.base, data);
+    return new FrontContacts(this.base, data);
   }
 
   /**
@@ -374,9 +420,9 @@ export class FrontContacts {
    *
    * @see https://dev.frontapp.com/reference/merge-contacts
    */
-  async merge(body: MergeContacts): Promise<FrontContact> {
+  async merge(body: MergeContacts): Promise<FrontContacts> {
     const data = await this.base.requestJson<ContactResponse>("POST", "/contacts/merge", { body });
-    return new FrontContact(this.base, data);
+    return new FrontContacts(this.base, data);
   }
 
   /**
@@ -387,11 +433,12 @@ export class FrontContacts {
    * @param contactId Contact id or supported [resource alias](https://dev.frontapp.com/docs/resource-aliases-1).
    * @see https://dev.frontapp.com/reference/get-contact
    */
-  async get(contactId: string): Promise<FrontContact> {
-    const path = FrontBase.expandPath("/contacts/{contact_id}", {
-      contact_id: contactId,
-    });
-    const data = await this.base.requestJson<ContactResponse>("GET", path);
-    return new FrontContact(this.base, data);
+  async get(contactId: string): Promise<FrontContacts> {
+    return await this.target(contactId).refresh();
+  }
+
+  /** Target a contact by ID without fetching it first. */
+  private target(contactId: string): FrontContacts {
+    return new FrontContacts(this.base, undefined, contactId);
   }
 }

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { FrontAccount } from "../../src/index";
+import { FrontAccounts } from "../../src/index";
 import { createMockClient, createTestSetup, jsonResponse } from "../helpers/setup";
 
 describe("accounts", () => {
@@ -28,7 +28,7 @@ describe("accounts", () => {
     expect(body.pagination?.next).toBe("tok_list");
   });
 
-  test("accounts.get returns FrontAccount", async () => {
+  test("accounts.get returns a hydrated FrontAccounts instance", async () => {
     const { front, requests } = createMockClient((req) => {
       const { url } = req;
       if (req.method === "GET" && url.endsWith("/accounts/acc_1")) {
@@ -46,13 +46,21 @@ describe("accounts", () => {
       return jsonResponse({ _pagination: {}, _results: [] });
     });
     const account = await front.accounts.get("acc_1");
-    expect(account).toBeInstanceOf(FrontAccount);
+    expect(account).toBeInstanceOf(FrontAccounts);
     expect(account.id).toBe("acc_1");
     expect(account.name).toBe("Dunder Mifflin");
     expect(requests[0]?.url).toBe("https://api2.frontapp.com/accounts/acc_1");
   });
 
-  test("FrontAccount.update applies 200 response body", async () => {
+  test("accounts.addContacts targets an account without fetching", async () => {
+    const { front, requests } = createMockClient(() => jsonResponse(null, { status: 204 }));
+    await front.accounts.addContacts("acc_1", { contact_ids: ["ctc_1"] });
+    expect(requests).toHaveLength(1);
+    expect(requests[0]?.method).toBe("POST");
+    expect(requests[0]?.url).toBe("https://api2.frontapp.com/accounts/acc_1/contacts");
+  });
+
+  test("FrontAccounts.update applies 200 response body", async () => {
     const { front } = createMockClient((req) => {
       const { url } = req;
       if (req.method === "GET" && url.endsWith("/accounts/acc_1")) {

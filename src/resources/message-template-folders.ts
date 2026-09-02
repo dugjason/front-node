@@ -2,7 +2,7 @@ import { FrontBase } from "../base";
 import type { components, operations } from "../gen/schema.gen";
 import type { WithNormalizedPagination } from "../normalize-response";
 import { FrontResource } from "../resource";
-import { FrontMessageTemplate } from "./message-templates";
+import { FrontMessageTemplates } from "./message-templates";
 
 export type MessageTemplateFolderResponse = components["schemas"]["MessageTemplateFolderResponse"];
 export type CreateMessageTemplateFolder = components["schemas"]["CreateMessageTemplateFolder"];
@@ -49,14 +49,14 @@ const folderResponseToUpdateBody = (
  *
  * @see https://dev.frontapp.com/reference/message-template-folders
  */
-export class FrontMessageTemplateFolder extends FrontResource<
+export class FrontMessageTemplateFolders extends FrontResource<
   MessageTemplateFolderResponse,
   UpdateMessageTemplateFolder
 > {
   private parentFolderIdForUpdate: string | null | undefined;
 
-  constructor(base: FrontBase, snapshot: MessageTemplateFolderResponse) {
-    super(base, snapshot);
+  constructor(base: FrontBase, snapshot?: MessageTemplateFolderResponse, folderId?: string) {
+    super(base, snapshot, folderId);
     this.parentFolderIdForUpdate = undefined;
   }
 
@@ -95,13 +95,25 @@ export class FrontMessageTemplateFolder extends FrontResource<
 
   async update(
     body: UpdateMessageTemplateFolder | Partial<UpdateMessageTemplateFolder>,
+  ): Promise<void>;
+  async update(
+    folderId: string,
+    body: UpdateMessageTemplateFolder | Partial<UpdateMessageTemplateFolder>,
+  ): Promise<void>;
+  async update(
+    bodyOrFolderId: UpdateMessageTemplateFolder | Partial<UpdateMessageTemplateFolder> | string,
+    directBody?: UpdateMessageTemplateFolder | Partial<UpdateMessageTemplateFolder>,
   ): Promise<void> {
-    await this.patchReplaceFromResponse(body);
-    if ("parent_folder_id" in body) {
+    if (typeof bodyOrFolderId === "string") {
+      await this.target(bodyOrFolderId).update(directBody ?? {});
+      return;
+    }
+    await this.patchReplaceFromResponse(bodyOrFolderId);
+    if ("parent_folder_id" in bodyOrFolderId) {
       this.parentFolderIdForUpdate =
-        body.parent_folder_id === null || body.parent_folder_id === undefined
+        bodyOrFolderId.parent_folder_id === null || bodyOrFolderId.parent_folder_id === undefined
           ? undefined
-          : body.parent_folder_id;
+          : bodyOrFolderId.parent_folder_id;
     }
   }
 
@@ -110,7 +122,11 @@ export class FrontMessageTemplateFolder extends FrontResource<
    *
    * **Required scope:** `message_templates:delete`
    */
-  override async delete(): Promise<void> {
+  override async delete(folderId?: string): Promise<void> {
+    if (folderId !== undefined) {
+      await this.target(folderId).delete();
+      return;
+    }
     await this.base.requestJson<AcceptedFolderDeletionBody>("DELETE", this.selfPath());
   }
 
@@ -119,7 +135,12 @@ export class FrontMessageTemplateFolder extends FrontResource<
    *
    * **Required scope:** `message_templates:read`
    */
-  async listChildFolders(): Promise<WithNormalizedPagination<ListFoldersResponse>> {
+  async listChildFolders(
+    folderId?: string,
+  ): Promise<WithNormalizedPagination<ListFoldersResponse>> {
+    if (folderId !== undefined) {
+      return await this.target(folderId).listChildFolders();
+    }
     const path = FrontBase.expandPath(
       "/message_template_folders/{message_template_folder_id}/message_template_folders",
       { message_template_folder_id: this.id },
@@ -134,13 +155,29 @@ export class FrontMessageTemplateFolder extends FrontResource<
    */
   async createChildFolder(
     body: CreateMessageTemplateFolderAsChild,
-  ): Promise<FrontMessageTemplateFolder> {
+  ): Promise<FrontMessageTemplateFolders>;
+  async createChildFolder(
+    folderId: string,
+    body: CreateMessageTemplateFolderAsChild,
+  ): Promise<FrontMessageTemplateFolders>;
+  async createChildFolder(
+    bodyOrFolderId: CreateMessageTemplateFolderAsChild | string,
+    directBody?: CreateMessageTemplateFolderAsChild,
+  ): Promise<FrontMessageTemplateFolders> {
+    if (typeof bodyOrFolderId === "string") {
+      if (directBody === undefined) {
+        throw new Error("Creating a child folder requires a request body.");
+      }
+      return await this.target(bodyOrFolderId).createChildFolder(directBody);
+    }
     const path = FrontBase.expandPath(
       "/message_template_folders/{message_template_folder_id}/message_template_folders",
       { message_template_folder_id: this.id },
     );
-    const data = await this.base.requestJson<MessageTemplateFolderResponse>("POST", path, { body });
-    return new FrontMessageTemplateFolder(this.base, data);
+    const data = await this.base.requestJson<MessageTemplateFolderResponse>("POST", path, {
+      body: bodyOrFolderId,
+    });
+    return new FrontMessageTemplateFolders(this.base, data);
   }
 
   /**
@@ -149,7 +186,12 @@ export class FrontMessageTemplateFolder extends FrontResource<
    *
    * **Required scope:** `message_templates:read`
    */
-  async listChildTemplates(): Promise<WithNormalizedPagination<ListFoldersResponse>> {
+  async listChildTemplates(
+    folderId?: string,
+  ): Promise<WithNormalizedPagination<ListFoldersResponse>> {
+    if (folderId !== undefined) {
+      return await this.target(folderId).listChildTemplates();
+    }
     const path = FrontBase.expandPath(
       "/message_template_folders/{message_template_folder_id}/message_templates",
       { message_template_folder_id: this.id },
@@ -164,7 +206,21 @@ export class FrontMessageTemplateFolder extends FrontResource<
    */
   async createChildTemplate(
     body: components["schemas"]["CreateMessageTemplateAsChild"],
-  ): Promise<FrontMessageTemplate> {
+  ): Promise<FrontMessageTemplates>;
+  async createChildTemplate(
+    folderId: string,
+    body: components["schemas"]["CreateMessageTemplateAsChild"],
+  ): Promise<FrontMessageTemplates>;
+  async createChildTemplate(
+    bodyOrFolderId: components["schemas"]["CreateMessageTemplateAsChild"] | string,
+    directBody?: components["schemas"]["CreateMessageTemplateAsChild"],
+  ): Promise<FrontMessageTemplates> {
+    if (typeof bodyOrFolderId === "string") {
+      if (directBody === undefined) {
+        throw new Error("Creating a child template requires a request body.");
+      }
+      return await this.target(bodyOrFolderId).createChildTemplate(directBody);
+    }
     const path = FrontBase.expandPath(
       "/message_template_folders/{message_template_folder_id}/message_templates",
       { message_template_folder_id: this.id },
@@ -172,22 +228,9 @@ export class FrontMessageTemplateFolder extends FrontResource<
     const data = await this.base.requestJson<components["schemas"]["MessageTemplateResponse"]>(
       "POST",
       path,
-      { body },
+      { body: bodyOrFolderId },
     );
-    return new FrontMessageTemplate(this.base, data);
-  }
-}
-
-/**
- * Message template folders (`/message_template_folders`).
- *
- * @see https://dev.frontapp.com/reference/message-template-folders
- */
-export class FrontMessageTemplateFolders {
-  private readonly base: FrontBase;
-
-  constructor(base: FrontBase) {
-    this.base = base;
+    return new FrontMessageTemplates(this.base, data);
   }
 
   /**
@@ -210,13 +253,13 @@ export class FrontMessageTemplateFolders {
    *
    * **Required scope:** `message_templates:write`
    */
-  async create(body: CreateMessageTemplateFolder): Promise<FrontMessageTemplateFolder> {
+  async create(body: CreateMessageTemplateFolder): Promise<FrontMessageTemplateFolders> {
     const data = await this.base.requestJson<MessageTemplateFolderResponse>(
       "POST",
       "/message_template_folders",
       { body },
     );
-    return new FrontMessageTemplateFolder(this.base, data);
+    return new FrontMessageTemplateFolders(this.base, data);
   }
 
   /**
@@ -224,11 +267,12 @@ export class FrontMessageTemplateFolders {
    *
    * **Required scope:** `message_templates:read`
    */
-  async get(folderId: string): Promise<FrontMessageTemplateFolder> {
-    const path = FrontBase.expandPath("/message_template_folders/{message_template_folder_id}", {
-      message_template_folder_id: folderId,
-    });
-    const data = await this.base.requestJson<MessageTemplateFolderResponse>("GET", path);
-    return new FrontMessageTemplateFolder(this.base, data);
+  async get(folderId: string): Promise<FrontMessageTemplateFolders> {
+    return await this.target(folderId).refresh();
+  }
+
+  /** Target a message template folder by id without calling the API first. */
+  private target(folderId: string): FrontMessageTemplateFolders {
+    return new FrontMessageTemplateFolders(this.base, undefined, folderId);
   }
 }

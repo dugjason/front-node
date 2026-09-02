@@ -96,7 +96,7 @@ const tagResponseToUpdateBody = (
  *
  * @see https://dev.frontapp.com/reference/tags
  */
-export class FrontTag extends FrontResource<TagResponse, TagUpdateInput> {
+export class FrontTags extends FrontResource<TagResponse, TagUpdateInput> {
   /** PATCH-only parent id (`null` clears). Cleared by {@link refresh}. */
   private parentTagIdForUpdate: string | null | undefined;
 
@@ -104,8 +104,8 @@ export class FrontTag extends FrontResource<TagResponse, TagUpdateInput> {
    * @param base Shared HTTP client (in practice the `Front` instance).
    * @param snapshot Tag JSON returned by the API.
    */
-  constructor(base: FrontBase, snapshot: TagResponse) {
-    super(base, snapshot);
+  constructor(base: FrontBase, snapshot?: TagResponse, tagId?: string) {
+    super(base, snapshot, tagId);
     this.parentTagIdForUpdate = undefined;
   }
 
@@ -189,14 +189,31 @@ export class FrontTag extends FrontResource<TagResponse, TagUpdateInput> {
    * @param body Fields to change (OpenAPI {@link TagUpdateInput}).
    * @see https://dev.frontapp.com/reference/update-a-tag
    */
-  async update(body: TagUpdateInput | Partial<TagUpdateInput>): Promise<void> {
-    await this.patchNoContent(body, mergeTagSnapshot);
-    if ("parent_tag_id" in body) {
-      this.parentTagIdForUpdate =
-        body.parent_tag_id === null || body.parent_tag_id === undefined
-          ? undefined
-          : body.parent_tag_id;
+  async update(body: TagUpdateInput | Partial<TagUpdateInput>): Promise<void>;
+  async update(tagId: string, body: TagUpdateInput | Partial<TagUpdateInput>): Promise<void>;
+  async update(
+    bodyOrTagId: TagUpdateInput | Partial<TagUpdateInput> | string,
+    directBody?: TagUpdateInput | Partial<TagUpdateInput>,
+  ): Promise<void> {
+    if (typeof bodyOrTagId === "string") {
+      await this.target(bodyOrTagId).update(directBody ?? {});
+      return;
     }
+    await this.patchNoContent(bodyOrTagId, mergeTagSnapshot);
+    if ("parent_tag_id" in bodyOrTagId) {
+      this.parentTagIdForUpdate =
+        bodyOrTagId.parent_tag_id === null || bodyOrTagId.parent_tag_id === undefined
+          ? undefined
+          : bodyOrTagId.parent_tag_id;
+    }
+  }
+
+  override async delete(tagId?: string): Promise<void> {
+    if (tagId === undefined) {
+      await super.delete();
+      return;
+    }
+    await this.target(tagId).delete();
   }
 
   /**
@@ -206,7 +223,10 @@ export class FrontTag extends FrontResource<TagResponse, TagUpdateInput> {
    *
    * @see https://dev.frontapp.com/reference/list-tag-children
    */
-  async listChildren(): Promise<FrontTag[]> {
+  async listChildren(tagId?: string): Promise<FrontTags[]> {
+    if (tagId !== undefined) {
+      return await this.target(tagId).listChildren();
+    }
     const path = FrontBase.expandPath("/tags/{tag_id}/children", {
       tag_id: this.id,
     });
@@ -215,7 +235,7 @@ export class FrontTag extends FrontResource<TagResponse, TagUpdateInput> {
       path,
     );
     const results = json._results ?? [];
-    return results.map((row) => new FrontTag(this.base, row));
+    return results.map((row) => new FrontTags(this.base, row));
   }
 
   /**
@@ -226,14 +246,22 @@ export class FrontTag extends FrontResource<TagResponse, TagUpdateInput> {
    * @param body Child tag payload (OpenAPI {@link CreateTag}).
    * @see https://dev.frontapp.com/reference/create-child-tag
    */
-  async createChild(body: CreateTag): Promise<FrontTag> {
+  async createChild(body: CreateTag): Promise<FrontTags>;
+  async createChild(tagId: string, body: CreateTag): Promise<FrontTags>;
+  async createChild(bodyOrTagId: CreateTag | string, directBody?: CreateTag): Promise<FrontTags> {
+    if (typeof bodyOrTagId === "string") {
+      if (directBody === undefined) {
+        throw new Error("Creating a child tag requires a request body.");
+      }
+      return await this.target(bodyOrTagId).createChild(directBody);
+    }
     const path = FrontBase.expandPath("/tags/{tag_id}/children", {
       tag_id: this.id,
     });
     const created = await this.base.requestJson<TagResponse>("POST", path, {
-      body,
+      body: bodyOrTagId,
     });
-    return new FrontTag(this.base, created);
+    return new FrontTags(this.base, created);
   }
 
   /**
@@ -246,7 +274,18 @@ export class FrontTag extends FrontResource<TagResponse, TagUpdateInput> {
    */
   async listTaggedConversations(
     query?: ListTaggedConversationsQuery,
+  ): Promise<WithNormalizedPagination<ListTaggedConversationsResponse>>;
+  async listTaggedConversations(
+    tagId: string,
+    query?: ListTaggedConversationsQuery,
+  ): Promise<WithNormalizedPagination<ListTaggedConversationsResponse>>;
+  async listTaggedConversations(
+    queryOrTagId?: ListTaggedConversationsQuery | string,
+    directQuery?: ListTaggedConversationsQuery,
   ): Promise<WithNormalizedPagination<ListTaggedConversationsResponse>> {
+    if (typeof queryOrTagId === "string") {
+      return await this.target(queryOrTagId).listTaggedConversations(directQuery);
+    }
     const path = FrontBase.expandPath("/tags/{tag_id}/conversations", {
       tag_id: this.id,
     });
@@ -254,23 +293,9 @@ export class FrontTag extends FrontResource<TagResponse, TagUpdateInput> {
       "GET",
       path,
       {
-        query: queryFromTaggedConversations(query),
+        query: queryFromTaggedConversations(queryOrTagId),
       },
     );
-  }
-}
-
-/**
- * Company-scoped tags (`GET/POST /tags`, `GET /tags/{tag_id}` via {@link FrontTags.get}).
- *
- * @see https://dev.frontapp.com/reference/tags
- */
-export class FrontTags {
-  private readonly base: FrontBase;
-
-  /** @param base Shared HTTP client (in practice the `Front` instance). */
-  constructor(base: FrontBase) {
-    this.base = base;
   }
 
   /**
@@ -296,11 +321,11 @@ export class FrontTags {
    * Prefer company/team/teammate tag endpoints when possible; see Front API docs.
    * @see https://dev.frontapp.com/reference/create-tag
    */
-  async create(body: CreateTag): Promise<FrontTag> {
+  async create(body: CreateTag): Promise<FrontTags> {
     const data = await this.base.requestJson<TagResponse>("POST", "/tags", {
       body,
     });
-    return new FrontTag(this.base, data);
+    return new FrontTags(this.base, data);
   }
 
   /**
@@ -311,9 +336,12 @@ export class FrontTags {
    * @param tagId Tag id, or a supported [resource alias](https://dev.frontapp.com/docs/resource-aliases-1).
    * @see https://dev.frontapp.com/reference/get-tag
    */
-  async get(tagId: string): Promise<FrontTag> {
-    const path = FrontBase.expandPath("/tags/{tag_id}", { tag_id: tagId });
-    const data = await this.base.requestJson<TagResponse>("GET", path);
-    return new FrontTag(this.base, data);
+  async get(tagId: string): Promise<FrontTags> {
+    return await this.target(tagId).refresh();
+  }
+
+  /** Target a tag by id without calling the API first. */
+  private target(tagId: string): FrontTags {
+    return new FrontTags(this.base, undefined, tagId);
   }
 }

@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
 
-import { FrontSignature } from "../../src/index";
+import { FrontSignatures } from "../../src/index";
 import { createMockClient, createTestSetup, jsonResponse } from "../helpers/setup";
 
 describe("signatures", () => {
-  test("signatures.get returns FrontSignature and sends GET /signatures/{id}", async () => {
+  test("signatures.get returns a hydrated FrontSignatures target and sends GET /signatures/{id}", async () => {
     const { front, requests } = createMockClient(() =>
       jsonResponse({
         _links: { self: "https://api2.frontapp.com/signatures/sig_abc" },
@@ -21,7 +21,7 @@ describe("signatures", () => {
 
     const sig = await front.signatures.get("sig_abc");
 
-    expect(sig).toBeInstanceOf(FrontSignature);
+    expect(sig).toBeInstanceOf(FrontSignatures);
     expect(sig.id).toBe("sig_abc");
     expect(sig.name).toBe("Default");
     expect(sig.body).toBe("<p>Hi</p>");
@@ -30,7 +30,7 @@ describe("signatures", () => {
     expect(requests[0]?.url).toBe("https://api2.frontapp.com/signatures/sig_abc");
   });
 
-  test("FrontSignature.save sends PATCH and applies 200 response body", async () => {
+  test("FrontSignatures.save sends PATCH and applies 200 response body", async () => {
     const { front, requests } = createMockClient((req) => {
       const { url } = req;
       if (req.method === "GET" && url.endsWith("/signatures/sig_abc")) {
@@ -70,6 +70,31 @@ describe("signatures", () => {
     expect(patch?.url).toBe("https://api2.frontapp.com/signatures/sig_abc");
     expect(sig.name).toBe("New");
     expect(sig.body).toBe("<p>new</p>");
+  });
+
+  test("signatures.update sends PATCH without fetching the signature first", async () => {
+    const { front, requests } = createMockClient((req) => {
+      if (req.method === "PATCH" && req.url.endsWith("/signatures/sig_abc")) {
+        return jsonResponse({
+          _links: { self: "https://api2.frontapp.com/signatures/sig_abc" },
+          body: "<p>Hi</p>",
+          channel_ids: null,
+          id: "sig_abc",
+          is_default: false,
+          is_private: true,
+          is_visible_for_all_teammate_channels: false,
+          name: "Renamed",
+          sender_info: null,
+        });
+      }
+      return jsonResponse({});
+    });
+
+    await front.signatures.update("sig_abc", { name: "Renamed" });
+
+    expect(requests).toHaveLength(1);
+    expect(requests[0]?.method).toBe("PATCH");
+    expect(requests[0]?.url).toBe("https://api2.frontapp.com/signatures/sig_abc");
   });
 
   test("signatures.listTeammate sends GET /teammates/{id}/signatures", async () => {

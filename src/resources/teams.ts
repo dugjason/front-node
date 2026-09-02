@@ -1,11 +1,11 @@
 import { FrontBase } from "../base";
 import type { components, operations } from "../gen/schema.gen";
 import type { WithNormalizedPagination } from "../normalize-response";
-import { FrontInbox } from "./inboxes";
+import { FrontInboxes } from "./inboxes";
 import type { CreateSharedSignature, SignatureResponse } from "./signatures";
-import { FrontSignature } from "./signatures";
+import { FrontSignatures } from "./signatures";
 import type { CreateTag, TagResponse } from "./tags";
-import { FrontTag } from "./tags";
+import { FrontTags } from "./tags";
 
 type CreateContact = components["schemas"]["CreateContact"];
 type CreateContactList = components["schemas"]["CreateContactList"];
@@ -167,25 +167,38 @@ const queryFromListTeamViews = (
  *
  * @see https://dev.frontapp.com/reference/teams
  */
-export class FrontTeam {
-  private state: TeamResponse;
+export class FrontTeams {
+  private state: TeamResponse | undefined;
   private readonly base: FrontBase;
+  private readonly teamId: string | undefined;
 
-  constructor(base: FrontBase, snapshot: TeamResponse) {
+  constructor(base: FrontBase, snapshot?: TeamResponse, teamId?: string) {
     this.base = base;
-    this.state = structuredClone(snapshot);
+    this.state = snapshot === undefined ? undefined : structuredClone(snapshot);
+    this.teamId = teamId;
   }
 
   get id(): string {
-    return this.state.id;
+    const id = this.state?.id ?? this.teamId;
+    if (id === undefined) {
+      throw new Error("This team operation requires an ID.");
+    }
+    return id;
   }
 
   get links(): TeamResponse["_links"] {
-    return this.state._links;
+    return this.requireState()._links;
   }
 
   /** Full team JSON from the last fetch. */
-  get data(): Readonly<TeamResponse> {
+  get data(): Readonly<TeamResponse> | undefined {
+    return this.state;
+  }
+
+  private requireState(): TeamResponse {
+    if (this.state === undefined) {
+      throw new Error("This team operation requires fetched resource data.");
+    }
     return this.state;
   }
 
@@ -325,14 +338,14 @@ export class FrontTeam {
    *
    * **Required scope:** `inboxes:write`
    */
-  async createInbox(body: CreateTeamInbox): Promise<FrontInbox> {
+  async createInbox(body: CreateTeamInbox): Promise<FrontInboxes> {
     const path = FrontBase.expandPath("/teams/{team_id}/inboxes", {
       team_id: this.id,
     });
     const data = await this.base.requestJson<
       operations["create-team-inbox"]["responses"][201]["content"]["application/json"]
     >("POST", path, { body });
-    return new FrontInbox(this.base, data);
+    return new FrontInboxes(this.base, data);
   }
 
   /**
@@ -465,14 +478,14 @@ export class FrontTeam {
    *
    * **Required scope:** `signatures:write`
    */
-  async createSignature(body: CreateSharedSignature): Promise<FrontSignature> {
+  async createSignature(body: CreateSharedSignature): Promise<FrontSignatures> {
     const path = FrontBase.expandPath("/teams/{team_id}/signatures", {
       team_id: this.id,
     });
     const data = await this.base.requestJson<SignatureResponse>("POST", path, {
       body,
     });
-    return new FrontSignature(this.base, data);
+    return new FrontSignatures(this.base, data);
   }
 
   /**
@@ -500,14 +513,14 @@ export class FrontTeam {
    *
    * **Required scope:** `tags:write`
    */
-  async createTag(body: CreateTag): Promise<FrontTag> {
+  async createTag(body: CreateTag): Promise<FrontTags> {
     const path = FrontBase.expandPath("/teams/{team_id}/tags", {
       team_id: this.id,
     });
     const data = await this.base.requestJson<TagResponse>("POST", path, {
       body,
     });
-    return new FrontTag(this.base, data);
+    return new FrontTags(this.base, data);
   }
 
   /**
@@ -567,20 +580,11 @@ export class FrontTeam {
       body,
     });
   }
-}
-
-/**
- * Teams / workspaces (`GET /teams`, `GET /teams/{team_id}`) and {@link FrontTeam} sub-routes.
- *
- * @see https://dev.frontapp.com/reference/teams
- */
-export class FrontTeams {
-  private readonly base: FrontBase;
-
-  constructor(base: FrontBase) {
-    this.base = base;
-  }
-
+  /**
+   * Teams / workspaces (`GET /teams`, `GET /teams/{team_id}`) and ID-bound sub-routes.
+   *
+   * @see https://dev.frontapp.com/reference/teams
+   */
   /**
    * List teams (`GET /teams`).
    *
@@ -598,9 +602,14 @@ export class FrontTeams {
    *
    * **Required scope:** `teams:read`
    */
-  async getTeam(teamId: string): Promise<FrontTeam> {
-    const path = FrontBase.expandPath("/teams/{team_id}", { team_id: teamId });
-    const data = await this.base.requestJson<TeamResponse>("GET", path);
-    return new FrontTeam(this.base, data);
+  async getTeam(teamId: string): Promise<FrontTeams> {
+    const team = this.target(teamId);
+    await team.refresh();
+    return team;
+  }
+
+  /** Target a team by id without calling the API first. */
+  private target(teamId: string): FrontTeams {
+    return new FrontTeams(this.base, undefined, teamId);
   }
 }

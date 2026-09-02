@@ -1,9 +1,25 @@
 import { describe, expect, test } from "bun:test";
 
-import { FrontChannel } from "../../src/index";
+import { FrontChannels } from "../../src/index";
 import { createMockClient, createTestSetup, jsonResponse, NOT_SUPPORTED } from "../helpers/setup";
 
 describe("channels", () => {
+  test("channels API sends messages without fetching the channel", async () => {
+    const { front, requests } = createMockClient(() =>
+      jsonResponse({ message_uid: "uid_1", status: "accepted" }, { status: 202 }),
+    );
+
+    await front.channels.createMessage("cha_1", {
+      body: "Hi",
+      options: { archive: true },
+      to: ["x@y.com"],
+    });
+
+    expect(requests).toHaveLength(1);
+    expect(requests[0]?.method).toBe("POST");
+    expect(requests[0]?.url).toBe("https://api2.frontapp.com/channels/cha_1/messages");
+  });
+
   test("channels.list sends GET /channels", async () => {
     const { front, requests } = createTestSetup();
     await front.channels.list();
@@ -23,7 +39,7 @@ describe("channels", () => {
     expect(requests[0]?.url).toBe("https://api2.frontapp.com/inboxes/inb_1/channels");
   });
 
-  test("channels.get returns FrontChannel", async () => {
+  test("channels.get returns a hydrated FrontChannels target", async () => {
     const { front, requests } = createMockClient(() =>
       jsonResponse({
         _links: { self: "https://api2.frontapp.com/channels/cha_1" },
@@ -37,14 +53,14 @@ describe("channels", () => {
       }),
     );
     const ch = await front.channels.get("cha_1");
-    expect(ch).toBeInstanceOf(FrontChannel);
+    expect(ch).toBeInstanceOf(FrontChannels);
     expect(ch.id).toBe("cha_1");
     expect(ch.name).toBe("Sales");
     expect(ch.type).toBe("smtp");
     expect(requests[0]?.url).toBe("https://api2.frontapp.com/channels/cha_1");
   });
 
-  test("FrontChannel.update merges on 204 response", async () => {
+  test("FrontChannels.update merges on 204 response", async () => {
     const { front } = createMockClient((req) => {
       const { url } = req;
       if (req.method === "GET" && url.endsWith("/channels/cha_1")) {
@@ -69,7 +85,7 @@ describe("channels", () => {
     expect(ch.settings.undo_send_time).toBe(10);
   });
 
-  test("FrontChannel.createDraft posts to /drafts", async () => {
+  test("FrontChannels.createDraft posts to /drafts", async () => {
     const { front, requests } = createMockClient((req) => {
       const { url } = req;
       if (req.method === "GET" && url.endsWith("/channels/cha_1")) {
@@ -103,7 +119,7 @@ describe("channels", () => {
     expect(post?.url).toBe("https://api2.frontapp.com/channels/cha_1/drafts");
   });
 
-  test("FrontChannel.createMessage posts to /messages and returns 202 body", async () => {
+  test("FrontChannels.createMessage posts to /messages and returns 202 body", async () => {
     const { front, requests } = createMockClient((req) => {
       const { url } = req;
       if (req.method === "GET" && url.endsWith("/channels/cha_1")) {
@@ -134,7 +150,7 @@ describe("channels", () => {
     expect(post?.url).toBe("https://api2.frontapp.com/channels/cha_1/messages");
   });
 
-  test("FrontChannel.receiveCustomMessage posts to /incoming_messages", async () => {
+  test("FrontChannels.receiveCustomMessage posts to /incoming_messages", async () => {
     const { front, requests } = createMockClient((req) => {
       const { url } = req;
       if (req.method === "GET" && url.endsWith("/channels/cha_1")) {
@@ -163,7 +179,7 @@ describe("channels", () => {
     expect(post?.url).toBe("https://api2.frontapp.com/channels/cha_1/incoming_messages");
   });
 
-  test("FrontChannel.validate posts to /validate", async () => {
+  test("FrontChannels.validate posts to /validate", async () => {
     const { front, requests } = createMockClient((req) => {
       const { url } = req;
       if (req.method === "GET" && url.endsWith("/channels/cha_1")) {
@@ -189,7 +205,7 @@ describe("channels", () => {
     expect(post?.url).toBe("https://api2.frontapp.com/channels/cha_1/validate");
   });
 
-  test("FrontChannel.delete throws", async () => {
+  test("FrontChannels.delete throws", async () => {
     const { front } = createMockClient(() =>
       jsonResponse({
         _links: { self: "https://api2.frontapp.com/channels/cha_1" },

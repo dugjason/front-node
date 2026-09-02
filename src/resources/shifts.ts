@@ -2,7 +2,7 @@ import { FrontBase } from "../base";
 import type { components, operations } from "../gen/schema.gen";
 import type { WithNormalizedPagination } from "../normalize-response";
 import { FrontResource } from "../resource";
-import { FrontTeammate } from "./teammates";
+import { FrontTeammates } from "./teammates";
 
 export type ShiftResponse = components["schemas"]["ShiftResponse"];
 export type CreateShift = components["schemas"]["CreateShift"];
@@ -44,7 +44,7 @@ const shiftResponseToUpdateBody = (state: ShiftResponse): UpdateShift => ({
  *
  * @see https://dev.frontapp.com/reference/shifts
  */
-export class FrontShift extends FrontResource<ShiftResponse, UpdateShift> {
+export class FrontShifts extends FrontResource<ShiftResponse, UpdateShift> {
   protected selfPath(): string {
     return FrontBase.expandPath("/shifts/{shift_id}", { shift_id: this.id });
   }
@@ -100,8 +100,25 @@ export class FrontShift extends FrontResource<ShiftResponse, UpdateShift> {
    *
    * @see https://dev.frontapp.com/reference/update-shift
    */
-  async update(body: UpdateShift | Partial<UpdateShift>): Promise<void> {
-    await this.patchNoContent(body, mergeShiftSnapshot);
+  async update(body: UpdateShift | Partial<UpdateShift>): Promise<void>;
+  async update(shiftId: string, body: UpdateShift | Partial<UpdateShift>): Promise<void>;
+  async update(
+    bodyOrShiftId: UpdateShift | Partial<UpdateShift> | string,
+    directBody?: UpdateShift | Partial<UpdateShift>,
+  ): Promise<void> {
+    if (typeof bodyOrShiftId === "string") {
+      await this.target(bodyOrShiftId).update(directBody ?? {});
+      return;
+    }
+    await this.patchNoContent(bodyOrShiftId, mergeShiftSnapshot);
+  }
+
+  override async delete(shiftId?: string): Promise<void> {
+    if (shiftId === undefined) {
+      await super.delete();
+      return;
+    }
+    await this.target(shiftId).delete();
   }
 
   /**
@@ -111,7 +128,10 @@ export class FrontShift extends FrontResource<ShiftResponse, UpdateShift> {
    *
    * @see https://dev.frontapp.com/reference/list-shifts-teammates
    */
-  async listTeammates(): Promise<FrontTeammate[]> {
+  async listTeammates(shiftId?: string): Promise<FrontTeammates[]> {
+    if (shiftId !== undefined) {
+      return await this.target(shiftId).listTeammates();
+    }
     const path = FrontBase.expandPath("/shifts/{shift_id}/teammates", {
       shift_id: this.id,
     });
@@ -120,7 +140,7 @@ export class FrontShift extends FrontResource<ShiftResponse, UpdateShift> {
       path,
     );
     const results = json._results ?? [];
-    return results.map((row) => new FrontTeammate(this.base, row));
+    return results.map((row) => new FrontTeammates(this.base, row));
   }
 
   /**
@@ -130,11 +150,23 @@ export class FrontShift extends FrontResource<ShiftResponse, UpdateShift> {
    *
    * @see https://dev.frontapp.com/reference/add-teammates-to-shift
    */
-  async addTeammates(body: components["schemas"]["TeammateIds"]): Promise<void> {
+  async addTeammates(body: components["schemas"]["TeammateIds"]): Promise<void>;
+  async addTeammates(shiftId: string, body: components["schemas"]["TeammateIds"]): Promise<void>;
+  async addTeammates(
+    bodyOrShiftId: components["schemas"]["TeammateIds"] | string,
+    directBody?: components["schemas"]["TeammateIds"],
+  ): Promise<void> {
+    if (typeof bodyOrShiftId === "string") {
+      if (directBody === undefined) {
+        throw new Error("Adding teammates requires a request body.");
+      }
+      await this.target(bodyOrShiftId).addTeammates(directBody);
+      return;
+    }
     const path = FrontBase.expandPath("/shifts/{shift_id}/teammates", {
       shift_id: this.id,
     });
-    await this.base.requestJson<undefined>("POST", path, { body });
+    await this.base.requestJson<undefined>("POST", path, { body: bodyOrShiftId });
   }
 
   /**
@@ -144,24 +176,23 @@ export class FrontShift extends FrontResource<ShiftResponse, UpdateShift> {
    *
    * @see https://dev.frontapp.com/reference/remove-teammates-from-shift
    */
-  async removeTeammates(body: components["schemas"]["TeammateIds"]): Promise<void> {
+  async removeTeammates(body: components["schemas"]["TeammateIds"]): Promise<void>;
+  async removeTeammates(shiftId: string, body: components["schemas"]["TeammateIds"]): Promise<void>;
+  async removeTeammates(
+    bodyOrShiftId: components["schemas"]["TeammateIds"] | string,
+    directBody?: components["schemas"]["TeammateIds"],
+  ): Promise<void> {
+    if (typeof bodyOrShiftId === "string") {
+      if (directBody === undefined) {
+        throw new Error("Removing teammates requires a request body.");
+      }
+      await this.target(bodyOrShiftId).removeTeammates(directBody);
+      return;
+    }
     const path = FrontBase.expandPath("/shifts/{shift_id}/teammates", {
       shift_id: this.id,
     });
-    await this.base.requestJson<undefined>("DELETE", path, { body });
-  }
-}
-
-/**
- * Shifts under `/shifts`.
- *
- * @see https://dev.frontapp.com/reference/shifts
- */
-export class FrontShifts {
-  private readonly base: FrontBase;
-
-  constructor(base: FrontBase) {
-    this.base = base;
+    await this.base.requestJson<undefined>("DELETE", path, { body: bodyOrShiftId });
   }
 
   /**
@@ -185,11 +216,11 @@ export class FrontShifts {
    *
    * @see https://dev.frontapp.com/reference/create-shift
    */
-  async create(body: CreateShift): Promise<FrontShift> {
+  async create(body: CreateShift): Promise<FrontShifts> {
     const data = await this.base.requestJson<ShiftResponse>("POST", "/shifts", {
       body,
     });
-    return new FrontShift(this.base, data);
+    return new FrontShifts(this.base, data);
   }
 
   /**
@@ -199,11 +230,12 @@ export class FrontShifts {
    *
    * @see https://dev.frontapp.com/reference/get-shift
    */
-  async get(shiftId: string): Promise<FrontShift> {
-    const path = FrontBase.expandPath("/shifts/{shift_id}", {
-      shift_id: shiftId,
-    });
-    const data = await this.base.requestJson<ShiftResponse>("GET", path);
-    return new FrontShift(this.base, data);
+  async get(shiftId: string): Promise<FrontShifts> {
+    return await this.target(shiftId).refresh();
+  }
+
+  /** Target a shift by id without calling the API first. */
+  private target(shiftId: string): FrontShifts {
+    return new FrontShifts(this.base, undefined, shiftId);
   }
 }

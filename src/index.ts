@@ -14,7 +14,6 @@ export {
   type AccountResponse,
   type ContactIds,
   type CustomFieldResponse,
-  FrontAccount,
   FrontAccounts,
 } from "./resources/accounts";
 export {
@@ -34,7 +33,6 @@ export {
   type CreateChannel,
   type CreateDraft,
   type CustomMessage,
-  FrontChannel,
   FrontChannels,
   type MessageResponse,
   type OutboundMessage,
@@ -43,7 +41,6 @@ export {
 export {
   type CommentResponse,
   type CreateComment,
-  FrontComment,
   FrontComments,
   type UpdateComment,
 } from "./resources/comments";
@@ -62,14 +59,12 @@ export {
   type CreateContact,
   type CreateContactNote,
   type DeleteContactHandle,
-  FrontContact,
   FrontContacts,
   type MergeContacts,
 } from "./resources/contacts";
 export {
   type ConversationResponse,
   type CreateConversation,
-  FrontConversation,
   FrontConversations,
   type ListConversationMessagesQuery,
   type OutboundReplyMessage,
@@ -84,14 +79,12 @@ export { FrontDrafts } from "./resources/drafts";
 export { FrontEvents } from "./resources/events";
 export {
   type CreateInbox,
-  FrontInbox,
   FrontInboxes,
   type ImportMessage,
   type InboxResponse,
   type TeammateIds,
 } from "./resources/inboxes";
 export {
-  FrontKnowledgeBase,
   FrontKnowledgeBaseArticle,
   FrontKnowledgeBaseCategory,
   FrontKnowledgeBases,
@@ -108,36 +101,30 @@ export {
   type KnowledgeBaseResponse,
   type KnowledgeBaseSlimResponse,
 } from "./resources/knowledge";
-export { FrontLink, FrontLinks } from "./resources/links";
+export { FrontLinks } from "./resources/links";
 export { FrontMe, type IdentityResponse } from "./resources/me";
-export {
-  FrontMessageTemplateFolder,
-  FrontMessageTemplateFolders,
-} from "./resources/message-template-folders";
-export { FrontMessageTemplate, FrontMessageTemplates } from "./resources/message-templates";
-export { FrontMessage, FrontMessages } from "./resources/messages";
+export { FrontMessageTemplateFolders } from "./resources/message-template-folders";
+export { FrontMessageTemplates } from "./resources/message-templates";
+export { FrontMessages } from "./resources/messages";
 export { FrontRules } from "./resources/rules";
-export { FrontShift, FrontShifts } from "./resources/shifts";
+export { FrontShifts } from "./resources/shifts";
 export {
   type CreatePrivateSignature,
   type CreateSharedSignature,
-  FrontSignature,
   FrontSignatures,
   type SignatureResponse,
   type UpdateSignature,
 } from "./resources/signatures";
 export {
   type CreateTag,
-  FrontTag,
   FrontTags,
   type TagResponse,
   type TagUpdateInput,
   type UpdateTag,
 } from "./resources/tags";
-export { FrontTeammateGroup, FrontTeammateGroups } from "./resources/teammate-groups";
+export { FrontTeammateGroups } from "./resources/teammate-groups";
 export {
   type CustomFieldParameter,
-  FrontTeammate,
   FrontTeammates,
   type TeammateResponse,
   type UpdateTeammate,
@@ -148,7 +135,6 @@ export {
   type CreateShift,
   type CreateTeamInbox,
   type CreateView,
-  FrontTeam,
   FrontTeams,
   type MessageTemplateFolderResponse,
   type MessageTemplateResponse,
@@ -156,4 +142,4 @@ export {
   type ShiftResponse,
   type TeamResponse,
 } from "./resources/teams";
-export { FrontView, FrontViews } from "./resources/views";
+export { FrontViews } from "./resources/views";

@@ -2,7 +2,7 @@ import { FrontBase } from "../base";
 import type { components, operations } from "../gen/schema.gen";
 import type { WithNormalizedPagination } from "../normalize-response";
 import { FrontResource } from "../resource";
-import { FrontTeammate } from "./teammates";
+import { FrontTeammates } from "./teammates";
 
 export type TeammateGroupResponse = components["schemas"]["TeammateGroupResponse"];
 export type CreateTeammateGroup = components["schemas"]["CreateTeammateGroup"];
@@ -88,7 +88,7 @@ const teammateGroupResponseToUpdateBody = (state: TeammateGroupResponse): Update
  *
  * @see https://dev.frontapp.com/reference/teammate-groups
  */
-export class FrontTeammateGroup extends FrontResource<TeammateGroupResponse, UpdateTeammateGroup> {
+export class FrontTeammateGroups extends FrontResource<TeammateGroupResponse, UpdateTeammateGroup> {
   protected selfPath(): string {
     return FrontBase.expandPath("/teammate_groups/{teammate_group_id}", {
       teammate_group_id: this.id,
@@ -134,8 +134,23 @@ export class FrontTeammateGroup extends FrontResource<TeammateGroupResponse, Upd
    *
    * @see https://dev.frontapp.com/reference/update-a-company-teammate-group
    */
-  async update(body: UpdateTeammateGroup | Partial<UpdateTeammateGroup>): Promise<void> {
-    await this.patchNoContent(body, mergeTeammateGroupSnapshot);
+  async update(body: UpdateTeammateGroup | Partial<UpdateTeammateGroup>): Promise<void>;
+  async update(
+    teammateGroupId: string,
+    body: UpdateTeammateGroup | Partial<UpdateTeammateGroup>,
+  ): Promise<void>;
+  async update(
+    bodyOrTeammateGroupId: string | UpdateTeammateGroup | Partial<UpdateTeammateGroup>,
+    body?: UpdateTeammateGroup | Partial<UpdateTeammateGroup>,
+  ): Promise<void> {
+    if (typeof bodyOrTeammateGroupId === "string") {
+      if (body === undefined) {
+        throw new Error("Updating a teammate group by ID requires a request body.");
+      }
+      await this.target(bodyOrTeammateGroupId).update(body);
+      return;
+    }
+    await this.patchNoContent(bodyOrTeammateGroupId, mergeTeammateGroupSnapshot);
   }
 
   /**
@@ -190,7 +205,7 @@ export class FrontTeammateGroup extends FrontResource<TeammateGroupResponse, Upd
    *
    * @see https://dev.frontapp.com/reference/list-company-teammate-group-teammates
    */
-  async listTeammates(): Promise<FrontTeammate[]> {
+  async listTeammates(): Promise<FrontTeammates[]> {
     const path = FrontBase.expandPath("/teammate_groups/{teammate_group_id}/teammates", {
       teammate_group_id: this.id,
     });
@@ -198,7 +213,7 @@ export class FrontTeammateGroup extends FrontResource<TeammateGroupResponse, Upd
       WithNormalizedPagination<ListTeammateGroupTeammatesResponse>
     >("GET", path);
     const results = json._results ?? [];
-    return results.map((row) => new FrontTeammate(this.base, row));
+    return results.map((row) => new FrontTeammates(this.base, row));
   }
 
   /**
@@ -273,20 +288,11 @@ export class FrontTeammateGroup extends FrontResource<TeammateGroupResponse, Upd
     });
     await this.base.requestJson<undefined>("DELETE", path, { body });
   }
-}
-
-/**
- * Company teammate groups under `/teammate_groups`.
- *
- * @see https://dev.frontapp.com/reference/teammate-groups
- */
-export class FrontTeammateGroups {
-  private readonly base: FrontBase;
-
-  constructor(base: FrontBase) {
-    this.base = base;
-  }
-
+  /**
+   * Company teammate groups under `/teammate_groups`.
+   *
+   * @see https://dev.frontapp.com/reference/teammate-groups
+   */
   /**
    * List teammate groups (`GET /teammate_groups`).
    *
@@ -308,11 +314,11 @@ export class FrontTeammateGroups {
    *
    * @see https://dev.frontapp.com/reference/create-company-teammate-group
    */
-  async create(body: CreateTeammateGroup): Promise<FrontTeammateGroup> {
+  async create(body: CreateTeammateGroup): Promise<FrontTeammateGroups> {
     const data = await this.base.requestJson<TeammateGroupResponse>("POST", "/teammate_groups", {
       body,
     });
-    return new FrontTeammateGroup(this.base, data);
+    return new FrontTeammateGroups(this.base, data);
   }
 
   /**
@@ -322,11 +328,14 @@ export class FrontTeammateGroups {
    *
    * @see https://dev.frontapp.com/reference/get-company-teammate-group
    */
-  async get(teammateGroupId: string): Promise<FrontTeammateGroup> {
-    const path = FrontBase.expandPath("/teammate_groups/{teammate_group_id}", {
-      teammate_group_id: teammateGroupId,
-    });
-    const data = await this.base.requestJson<TeammateGroupResponse>("GET", path);
-    return new FrontTeammateGroup(this.base, data);
+  async get(teammateGroupId: string): Promise<FrontTeammateGroups> {
+    const teammateGroup = this.target(teammateGroupId);
+    await teammateGroup.refresh();
+    return teammateGroup;
+  }
+
+  /** Target a teammate group by id without calling the API first. */
+  private target(teammateGroupId: string): FrontTeammateGroups {
+    return new FrontTeammateGroups(this.base, undefined, teammateGroupId);
   }
 }

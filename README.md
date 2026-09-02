@@ -16,6 +16,15 @@ import { Front } from "@dugjason/front-node";
 const front = new Front({ apiKey: process.env.FRONT_API_TOKEN });
 
 const teammates = await front.teammates.list();
+
+// ID-scoped operations do not require fetching the resource first.
+await front.channels.createMessage("cha_123", {
+  body: "Hello from Front",
+  options: { archive: true },
+  to: ["customer@example.com"],
+});
+await front.conversations.addTag("cnv_123", { tag_ids: ["tag_123"] });
+await front.messages.markSeen("msg_123");
 ```
 
 ## Development
