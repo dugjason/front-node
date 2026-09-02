@@ -1,5 +1,11 @@
 # @dugjason/front-node
 
+## 0.1.0
+
+### Minor Changes
+
+- 20b0ed9: Unify collection and resource classes across the SDK. Each plural resource class now supports collection operations, direct ID-first calls, and hydrated instance usage returned by `get(id)`. Remove the redundant singular resource classes and exports.
+
 ## 0.0.4
 
 ### Patch Changes
