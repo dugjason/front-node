@@ -1,5 +1,11 @@
 # @dugjason/front-node
 
+## 0.2.0
+
+### Minor Changes
+
+- c164375: Prepare the 0.2.0 release with no runtime behavior changes.
+
 ## 0.1.0
 
 ### Minor Changes
