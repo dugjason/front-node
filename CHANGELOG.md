@@ -1,5 +1,11 @@
 # @dugjason/front-node
 
+## 0.2.1
+
+### Patch Changes
+
+- c130620: Add the latest analytics metric IDs from Front's OpenAPI specification.
+
 ## 0.2.0
 
 ### Minor Changes
