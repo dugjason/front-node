@@ -294,14 +294,14 @@ export class Front extends FrontBase {
     });
 
     const text = await response.text();
+    if (!response.ok) {
+      throw new FrontApiError(response, text);
+    }
     let parsed: unknown;
     try {
       parsed = JSON.parse(text);
     } catch {
-      parsed = text;
-    }
-    if (!response.ok) {
-      throw new FrontApiError(response, parsed);
+      parsed = undefined;
     }
     if (!isFrontOAuthTokenResponse(parsed)) {
       throw new Error("Front OAuth token response is missing access_token or refresh_token.");

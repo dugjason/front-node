@@ -110,14 +110,8 @@ export class FrontBase {
       method,
     });
     if (!response.ok) {
-      let parsed: unknown;
       const text = await response.text();
-      try {
-        parsed = JSON.parse(text) as unknown;
-      } catch {
-        parsed = text;
-      }
-      throw new FrontApiError(response, parsed);
+      throw new FrontApiError(response, text);
     }
     if (response.status === 204) {
       return undefined as TResult;
@@ -161,14 +155,8 @@ export class FrontBase {
     }
     const response = await this.fetchImpl(url, { headers, method });
     if (!response.ok) {
-      let parsed: unknown;
       const text = await response.text();
-      try {
-        parsed = JSON.parse(text) as unknown;
-      } catch {
-        parsed = text;
-      }
-      throw new FrontApiError(response, parsed);
+      throw new FrontApiError(response, text);
     }
     return response;
   }
