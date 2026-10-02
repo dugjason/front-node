@@ -1,11 +1,11 @@
 import { FrontBase } from "../base";
+import type { NextPageParams } from "../base";
 import type { components, operations } from "../gen/schema.gen";
-import type { WithNormalizedPagination } from "../normalize-response";
+import type { PaginationInfo, WithNormalizedPagination } from "../normalize-response";
 import { FrontInboxes } from "./inboxes";
 import type { CreateSharedSignature, SignatureResponse } from "./signatures";
 import { FrontSignatures } from "./signatures";
-import type { CreateTag, TagResponse } from "./tags";
-import { FrontTags } from "./tags";
+import type { TagResponse } from "./tags";
 
 type CreateContact = components["schemas"]["CreateContact"];
 type CreateContactList = components["schemas"]["CreateContactList"];
@@ -59,9 +59,14 @@ type ListTeamShiftsResponse =
 type ListTeamSignaturesResponse =
   operations["list-team-signatures"]["responses"][200]["content"]["application/json"];
 
-type ListTeamTagsQuery = NonNullable<operations["list-team-tags"]["parameters"]["query"]>;
+export type ListTeamTagsParams = NonNullable<operations["list-team-tags"]["parameters"]["query"]> &
+  NextPageParams;
+export type CreateTeamTagParams =
+  operations["create-team-tag"]["requestBody"]["content"]["application/json"];
 type ListTeamTagsResponse =
-  operations["list-team-tags"]["responses"][200]["content"]["application/json"];
+  operations["list-team-tags"]["responses"][200]["content"]["application/json"] & {
+    pagination?: PaginationInfo;
+  };
 
 type ListTeamViewsQuery = NonNullable<operations["list-team-views"]["parameters"]["query"]>;
 type ListTeamViewsResponse =
@@ -125,7 +130,7 @@ const queryFromListTeamMessageTemplates = (
 };
 
 const queryFromListTeamTags = (
-  q?: ListTeamTagsQuery,
+  q?: ListTeamTagsParams,
 ): Record<string, string | undefined> | undefined => {
   if (!q) {
     return;
@@ -489,38 +494,35 @@ export class FrontTeams {
   }
 
   /**
-   * List team tags (`GET /teams/{team_id}/tags`).
+   * List team tags (`GET /teams/{team_id}/tags`). `nextPageUrl` overrides other list parameters.
    *
    * **Required scope:** `tags:read`
    */
   async listTags(
-    query?: ListTeamTagsQuery,
+    teamId: string,
+    query?: ListTeamTagsParams,
   ): Promise<WithNormalizedPagination<ListTeamTagsResponse>> {
-    const path = FrontBase.expandPath("/teams/{team_id}/tags", {
-      team_id: this.id,
-    });
+    const path = FrontBase.expandPath("/teams/{team_id}/tags", { team_id: teamId });
     return await this.base.requestJson<WithNormalizedPagination<ListTeamTagsResponse>>(
       "GET",
       path,
       {
-        query: queryFromListTeamTags(query),
+        query:
+          query?.nextPageUrl === undefined
+            ? queryFromListTeamTags(query)
+            : FrontBase.queryFromNextPageUrl(query.nextPageUrl, path),
       },
     );
   }
 
   /**
-   * Create a team tag (`POST /teams/{team_id}/tags`).
+   * Create a team tag (`POST /teams/{team_id}/tags`). Returns the plain tag response.
    *
    * **Required scope:** `tags:write`
    */
-  async createTag(body: CreateTag): Promise<FrontTags> {
-    const path = FrontBase.expandPath("/teams/{team_id}/tags", {
-      team_id: this.id,
-    });
-    const data = await this.base.requestJson<TagResponse>("POST", path, {
-      body,
-    });
-    return new FrontTags(this.base, data);
+  async createTag(teamId: string, body: CreateTeamTagParams): Promise<TagResponse> {
+    const path = FrontBase.expandPath("/teams/{team_id}/tags", { team_id: teamId });
+    return await this.base.requestJson<TagResponse>("POST", path, { body });
   }
 
   /**

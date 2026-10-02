@@ -53,7 +53,13 @@ export {
   FrontComments,
   type UpdateComment,
 } from "./resources/comments";
-export { FrontCompany, type RuleResponse, type StatusResponse } from "./resources/company";
+export {
+  type CreateCompanyTagParams,
+  FrontCompany,
+  type ListCompanyTagsParams,
+  type RuleResponse,
+  type StatusResponse,
+} from "./resources/company";
 export {
   type AddContactsToList,
   type CreateContactList,
@@ -125,11 +131,13 @@ export {
   type UpdateSignature,
 } from "./resources/signatures";
 export {
-  type CreateTag,
+  type CreateChildTagParams,
+  type CreateTagParams,
   FrontTags,
+  type ListTagsParams,
+  type ListTaggedConversationsParams,
   type TagResponse,
-  type TagUpdateInput,
-  type UpdateTag,
+  type UpdateTagParams,
 } from "./resources/tags";
 export { FrontTeammateGroups } from "./resources/teammate-groups";
 export {
@@ -152,3 +160,5 @@ export {
   type TeamResponse,
 } from "./resources/teams";
 export { FrontViews } from "./resources/views";
+
+export type { CreateTeamTagParams, ListTeamTagsParams } from "./resources/teams";

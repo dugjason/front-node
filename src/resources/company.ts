@@ -1,8 +1,8 @@
 import { FrontBase } from "../base";
+import type { NextPageParams } from "../base";
 import type { components, operations } from "../gen/schema.gen";
-import type { WithNormalizedPagination } from "../normalize-response";
-import type { CreateTag } from "./tags";
-import { FrontTags } from "./tags";
+import type { PaginationInfo, WithNormalizedPagination } from "../normalize-response";
+import type { TagResponse } from "./tags";
 
 export type RuleResponse = components["schemas"]["RuleResponse"];
 export type StatusResponse = components["schemas"]["StatusResponse"];
@@ -13,13 +13,20 @@ type ListCompanyRulesResponse =
 type ListCompanyTicketStatusesResponse =
   operations["list-company-ticket-statuses"]["responses"][200]["content"]["application/json"];
 
-type ListCompanyTagsQuery = NonNullable<operations["list-company-tags"]["parameters"]["query"]>;
+export type ListCompanyTagsParams = NonNullable<
+  operations["list-company-tags"]["parameters"]["query"]
+> &
+  NextPageParams;
+export type CreateCompanyTagParams =
+  operations["create-company-tag"]["requestBody"]["content"]["application/json"];
 
 type ListCompanyTagsResponse =
-  operations["list-company-tags"]["responses"][200]["content"]["application/json"];
+  operations["list-company-tags"]["responses"][200]["content"]["application/json"] & {
+    pagination?: PaginationInfo;
+  };
 
 const queryFromListCompanyTags = (
-  q?: ListCompanyTagsQuery,
+  q?: ListCompanyTagsParams,
 ): Record<string, string | undefined> | undefined => {
   if (!q) {
     return;
@@ -90,17 +97,22 @@ export class FrontCompany {
   }
 
   /**
-   * List company tags (`GET /company/tags`).
+   * List company tags (`GET /company/tags`). `nextPageUrl` overrides other list parameters.
    *
    * **Required scope:** `tags:read`
    */
   async listTags(
-    query?: ListCompanyTagsQuery,
+    query?: ListCompanyTagsParams,
   ): Promise<WithNormalizedPagination<ListCompanyTagsResponse>> {
     return await this.base.requestJson<WithNormalizedPagination<ListCompanyTagsResponse>>(
       "GET",
       "/company/tags",
-      { query: queryFromListCompanyTags(query) },
+      {
+        query:
+          query?.nextPageUrl === undefined
+            ? queryFromListCompanyTags(query)
+            : FrontBase.queryFromNextPageUrl(query.nextPageUrl, "/company/tags"),
+      },
     );
   }
 
@@ -109,12 +121,7 @@ export class FrontCompany {
    *
    * **Required scope:** `tags:write`
    */
-  async createTag(body: CreateTag): Promise<FrontTags> {
-    const data = await this.base.requestJson<components["schemas"]["TagResponse"]>(
-      "POST",
-      "/company/tags",
-      { body },
-    );
-    return new FrontTags(this.base, data);
+  async createTag(body: CreateCompanyTagParams): Promise<TagResponse> {
+    return await this.base.requestJson<TagResponse>("POST", "/company/tags", { body });
   }
 }

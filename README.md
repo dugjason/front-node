@@ -83,3 +83,50 @@ const loggingFetch: typeof fetch = async (input, init) => {
 };
 const front = new Front({ fetch: loggingFetch });
 ```
+
+### Tags
+
+Tags use collection methods and return plain `TagResponse` objects with Front's snake_case fields. Request types are `CreateTagParams`, `CreateChildTagParams`, and `UpdateTagParams`.
+
+```ts
+const tag = await front.tags.get("tag_123");
+await front.tags.update(tag.id, { name: "Priority", parent_tag_id: null });
+const updated = await front.tags.get(tag.id); // Updates return void (204).
+const children = await front.tags.listChildren(tag.id);
+console.log(children._results);
+await front.tags.delete(tag.id);
+```
+
+Each list call fetches one page. `pagination.next` contains Front's full next-page URL:
+
+```ts
+const firstPage = await front.tags.list({ limit: 20, sort_by: "name", sort_order: "asc" });
+if (firstPage.pagination?.next) {
+  const secondPage = await front.tags.list({ nextPageUrl: firstPage.pagination.next });
+}
+```
+
+`nextPageUrl` overrides all other list parameters. Tags child and conversation lists, company tag lists, and team tag lists also accept it. Pagination responses across the SDK now preserve the full URL; other collections will gain `nextPageUrl` support as they are migrated. For a direct `page_token` call, use `pageTokenFromPaginationNextUrl(page.pagination.next)` to extract the token.
+
+Migration: replace `tag.update(params)`, property mutations followed by `tag.save()`, and `tag.delete()` with collection calls using `tag.id`. Replace `tag.refresh()` with `front.tags.get(tag.id)`. Use `created_at` instead of `createdAt`. Child lists now preserve the API envelope; read `_results` rather than using the return value as an array. Company and team tag creation also return plain tag responses. Other resources retain their current API while this migration proceeds.
+
+Team tag operations also take the ID first:
+
+```ts
+const tags = await front.teams.listTags("tim_123", { limit: 20 });
+const tag = await front.teams.createTag("tim_123", {
+  name: "Priority",
+  is_visible_in_conversation_lists: true,
+});
+```
+
+Replace fetched-team `team.listTags(params)` and `team.createTag(params)` calls with these collection methods using `team.id`. Team tag lists accept `nextPageUrl`, which overrides other list parameters.
+
+Company tags use `front.company.listTags(params)` and `front.company.createTag(params)`; no company ID is required. Their request types are `ListCompanyTagsParams` and `CreateCompanyTagParams`. For team tags, use `ListTeamTagsParams` and `CreateTeamTagParams`.
+
+```ts
+const first = await front.company.listTags({ limit: 20 });
+if (first.pagination?.next) {
+  const second = await front.company.listTags({ nextPageUrl: first.pagination.next });
+}
+```

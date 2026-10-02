@@ -1,30 +1,42 @@
 import { FrontBase } from "../base";
+import type { NextPageParams } from "../base";
 import type { components, operations } from "../gen/schema.gen";
-import type { WithNormalizedPagination } from "../normalize-response";
-import { FrontResource } from "../resource";
+import type { PaginationInfo, WithNormalizedPagination } from "../normalize-response";
 
 export type TagResponse = components["schemas"]["TagResponse"];
-export type CreateTag = components["schemas"]["CreateTag"];
-export type UpdateTag = components["schemas"]["UpdateTag"];
+export type CreateTagParams =
+  operations["create-tag"]["requestBody"]["content"]["application/json"];
+export type CreateChildTagParams =
+  operations["create-child-tag"]["requestBody"]["content"]["application/json"];
 
-/** PATCH body for a tag; `parent_tag_id` may be `null` to clear the parent (API behavior). */
-export type TagUpdateInput = Omit<UpdateTag, "parent_tag_id"> & {
-  parent_tag_id?: string | null;
+/** The schema documents `null` as the value that removes a tag's parent. */
+export type UpdateTagParams = Omit<
+  operations["update-a-tag"]["requestBody"]["content"]["application/json"],
+  "parent_tag_id"
+> & { parent_tag_id?: string | null };
+
+export type ListTagsParams = NonNullable<operations["list-tags"]["parameters"]["query"]> &
+  NextPageParams;
+type ListTagsResponse = operations["list-tags"]["responses"][200]["content"]["application/json"] & {
+  pagination?: PaginationInfo;
 };
 
-type ListTagsQuery = NonNullable<operations["list-tags"]["parameters"]["query"]>;
-type ListTagsResponse = operations["list-tags"]["responses"][200]["content"]["application/json"];
-
 type ListTagChildrenResponse =
-  operations["list-tag-children"]["responses"][200]["content"]["application/json"];
+  operations["list-tag-children"]["responses"][200]["content"]["application/json"] & {
+    pagination?: PaginationInfo;
+  };
 
-type ListTaggedConversationsQuery = NonNullable<
+export type ListTaggedConversationsParams = NonNullable<
   operations["list-tagged-conversations"]["parameters"]["query"]
->;
+> &
+  NextPageParams;
 type ListTaggedConversationsResponse =
   operations["list-tagged-conversations"]["responses"][200]["content"]["application/json"];
 
-const queryFromListTags = (q?: ListTagsQuery): Record<string, string | undefined> | undefined => {
+const tagPath = (tagId: string): string =>
+  FrontBase.expandPath("/tags/{tag_id}", { tag_id: tagId });
+
+const queryFromListTags = (q?: ListTagsParams): Record<string, string | undefined> | undefined => {
   if (!q) {
     return;
   }
@@ -45,7 +57,7 @@ const queryFromListTags = (q?: ListTagsQuery): Record<string, string | undefined
 };
 
 const queryFromTaggedConversations = (
-  q?: ListTaggedConversationsQuery,
+  q?: ListTaggedConversationsParams,
 ): Record<string, string | undefined> | undefined => {
   if (!q) {
     return;
@@ -63,252 +75,32 @@ const queryFromTaggedConversations = (
   return out;
 };
 
-const mergeTagSnapshot = (current: TagResponse, patch: Partial<TagUpdateInput>): TagResponse => {
-  const { parent_tag_id: _parentTagIdOmitted, ...restPatch } = patch;
-  const filtered = Object.fromEntries(
-    Object.entries(restPatch).filter(([, value]) => value !== undefined),
-  ) as Partial<TagResponse>;
-  return { ...current, ...filtered };
-};
-
-const tagResponseToUpdateBody = (
-  state: TagResponse,
-  parentTagId: string | null | undefined,
-): TagUpdateInput => {
-  const body: TagUpdateInput = {
-    description: state.description ?? undefined,
-    highlight: (state.highlight ?? undefined) as UpdateTag["highlight"],
-    is_visible_in_conversation_lists: state.is_visible_in_conversation_lists,
-    name: state.name,
-  };
-  if (parentTagId !== undefined) {
-    body.parent_tag_id = parentTagId;
-  }
-  return body;
-};
-
 /**
- * One tag (`/tags/{tag_id}` and related child/conversation routes).
- *
- * Writable camelCase: `name`, `description`, `highlight`, `isVisibleInConversationLists`, `links`, `parentTagId`
- * (PATCH-only parent id; `null` clears on save — cleared on {@link refresh}). Read-only: `id`, `isPrivate`,
- * `createdAt`, `updatedAt`. Raw JSON: {@link FrontResource.data}.
+ * Company tag collection (`GET/POST /tags`) and by-ID operations (`/tags/{tag_id}`).
  *
  * @see https://dev.frontapp.com/reference/tags
  */
-export class FrontTags extends FrontResource<TagResponse, TagUpdateInput> {
-  /** PATCH-only parent id (`null` clears). Cleared by {@link refresh}. */
-  private parentTagIdForUpdate: string | null | undefined;
+export class FrontTags {
+  private readonly base: FrontBase;
 
-  /**
-   * @param base Shared HTTP client (in practice the `Front` instance).
-   * @param snapshot Tag JSON returned by the API.
-   */
-  constructor(base: FrontBase, snapshot?: TagResponse, tagId?: string) {
-    super(base, snapshot, tagId);
-    this.parentTagIdForUpdate = undefined;
-  }
-
-  protected selfPath(): string {
-    return FrontBase.expandPath("/tags/{tag_id}", { tag_id: this.id });
-  }
-
-  protected override onAfterRefresh(): void {
-    this.parentTagIdForUpdate = undefined;
-  }
-
-  get name(): string {
-    return this.pick("name");
-  }
-
-  set name(value: string) {
-    this.assign("name", value);
-  }
-
-  get description(): string | null {
-    return this.pick("description");
-  }
-
-  set description(value: string | null) {
-    this.assign("description", value);
-  }
-
-  get highlight(): string | null {
-    return this.pick("highlight");
-  }
-
-  set highlight(value: string | null) {
-    this.assign("highlight", value);
-  }
-
-  get isPrivate(): boolean {
-    return this.pick("is_private");
-  }
-
-  get isVisibleInConversationLists(): boolean {
-    return this.pick("is_visible_in_conversation_lists");
-  }
-
-  set isVisibleInConversationLists(value: boolean) {
-    this.assign("is_visible_in_conversation_lists", value);
-  }
-
-  get createdAt(): number | undefined {
-    return this.pick("created_at");
-  }
-
-  get updatedAt(): number | undefined {
-    return this.pick("updated_at");
-  }
-
-  /**
-   * Parent tag id for `PATCH` updates only ([Update a tag](https://dev.frontapp.com/reference/update-a-tag)).
-   * Set to `null` and call {@link save} to clear the parent on the server.
-   */
-  get parentTagId(): string | null | undefined {
-    return this.parentTagIdForUpdate;
-  }
-
-  set parentTagId(value: string | null | undefined) {
-    this.parentTagIdForUpdate = value;
-  }
-
-  /**
-   * Build the `PATCH` body implied by the current property values (including {@link parentTagId} when set).
-   * @see https://dev.frontapp.com/reference/update-a-tag
-   */
-  toUpdateBody(): TagUpdateInput {
-    return tagResponseToUpdateBody(this.state, this.parentTagIdForUpdate);
-  }
-
-  /**
-   * Update this tag (`PATCH /tags/{tag_id}`). The API returns `204`; local state is merged from the request body.
-   *
-   * **Required scope:** `tags:write`
-   *
-   * @param body Fields to change (OpenAPI {@link TagUpdateInput}).
-   * @see https://dev.frontapp.com/reference/update-a-tag
-   */
-  async update(body: TagUpdateInput | Partial<TagUpdateInput>): Promise<void>;
-  async update(tagId: string, body: TagUpdateInput | Partial<TagUpdateInput>): Promise<void>;
-  async update(
-    bodyOrTagId: TagUpdateInput | Partial<TagUpdateInput> | string,
-    directBody?: TagUpdateInput | Partial<TagUpdateInput>,
-  ): Promise<void> {
-    if (typeof bodyOrTagId === "string") {
-      await this.target(bodyOrTagId).update(directBody ?? {});
-      return;
-    }
-    await this.patchNoContent(bodyOrTagId, mergeTagSnapshot);
-    if ("parent_tag_id" in bodyOrTagId) {
-      this.parentTagIdForUpdate =
-        bodyOrTagId.parent_tag_id === null || bodyOrTagId.parent_tag_id === undefined
-          ? undefined
-          : bodyOrTagId.parent_tag_id;
-    }
-  }
-
-  override async delete(tagId?: string): Promise<void> {
-    if (tagId === undefined) {
-      await super.delete();
-      return;
-    }
-    await this.target(tagId).delete();
-  }
-
-  /**
-   * List child tags (`GET /tags/{tag_id}/children`).
-   *
-   * **Required scope:** `tags:read`
-   *
-   * @see https://dev.frontapp.com/reference/list-tag-children
-   */
-  async listChildren(tagId?: string): Promise<FrontTags[]> {
-    if (tagId !== undefined) {
-      return await this.target(tagId).listChildren();
-    }
-    const path = FrontBase.expandPath("/tags/{tag_id}/children", {
-      tag_id: this.id,
-    });
-    const json = await this.base.requestJson<WithNormalizedPagination<ListTagChildrenResponse>>(
-      "GET",
-      path,
-    );
-    const results = json._results ?? [];
-    return results.map((row) => new FrontTags(this.base, row));
-  }
-
-  /**
-   * Create a child tag (`POST /tags/{tag_id}/children`).
-   *
-   * **Required scope:** `tags:write`
-   *
-   * @param body Child tag payload (OpenAPI {@link CreateTag}).
-   * @see https://dev.frontapp.com/reference/create-child-tag
-   */
-  async createChild(body: CreateTag): Promise<FrontTags>;
-  async createChild(tagId: string, body: CreateTag): Promise<FrontTags>;
-  async createChild(bodyOrTagId: CreateTag | string, directBody?: CreateTag): Promise<FrontTags> {
-    if (typeof bodyOrTagId === "string") {
-      if (directBody === undefined) {
-        throw new Error("Creating a child tag requires a request body.");
-      }
-      return await this.target(bodyOrTagId).createChild(directBody);
-    }
-    const path = FrontBase.expandPath("/tags/{tag_id}/children", {
-      tag_id: this.id,
-    });
-    const created = await this.base.requestJson<TagResponse>("POST", path, {
-      body: bodyOrTagId,
-    });
-    return new FrontTags(this.base, created);
-  }
-
-  /**
-   * List conversations that have this tag (`GET /tags/{tag_id}/conversations`).
-   *
-   * **Required scope:** `conversations:read`
-   *
-   * @param query Optional `q`, `limit`, and `page_token` (see Front pagination and query-object docs).
-   * @see https://dev.frontapp.com/reference/list-tagged-conversations
-   */
-  async listTaggedConversations(
-    query?: ListTaggedConversationsQuery,
-  ): Promise<WithNormalizedPagination<ListTaggedConversationsResponse>>;
-  async listTaggedConversations(
-    tagId: string,
-    query?: ListTaggedConversationsQuery,
-  ): Promise<WithNormalizedPagination<ListTaggedConversationsResponse>>;
-  async listTaggedConversations(
-    queryOrTagId?: ListTaggedConversationsQuery | string,
-    directQuery?: ListTaggedConversationsQuery,
-  ): Promise<WithNormalizedPagination<ListTaggedConversationsResponse>> {
-    if (typeof queryOrTagId === "string") {
-      return await this.target(queryOrTagId).listTaggedConversations(directQuery);
-    }
-    const path = FrontBase.expandPath("/tags/{tag_id}/conversations", {
-      tag_id: this.id,
-    });
-    return await this.base.requestJson<WithNormalizedPagination<ListTaggedConversationsResponse>>(
-      "GET",
-      path,
-      {
-        query: queryFromTaggedConversations(queryOrTagId),
-      },
-    );
+  constructor(base: FrontBase) {
+    this.base = base;
   }
 
   /**
    * List tags for the company accessible to the token (company, team, and teammate tags).
+   * When provided, `nextPageUrl` overrides all other query parameters.
    *
    * **Required scope:** `tags:read`
    *
-   * @param query Optional pagination and sorting.
    * @see https://dev.frontapp.com/reference/list-tags
    */
-  async list(query?: ListTagsQuery): Promise<WithNormalizedPagination<ListTagsResponse>> {
+  async list(query?: ListTagsParams): Promise<WithNormalizedPagination<ListTagsResponse>> {
     return await this.base.requestJson<WithNormalizedPagination<ListTagsResponse>>("GET", "/tags", {
-      query: queryFromListTags(query),
+      query:
+        query?.nextPageUrl === undefined
+          ? queryFromListTags(query)
+          : FrontBase.queryFromNextPageUrl(query.nextPageUrl, "/tags"),
     });
   }
 
@@ -317,15 +109,12 @@ export class FrontTags extends FrontResource<TagResponse, TagUpdateInput> {
    *
    * **Required scope:** `tags:write`
    *
-   * @param body Tag fields (OpenAPI {@link CreateTag}).
    * Prefer company/team/teammate tag endpoints when possible; see Front API docs.
+   *
    * @see https://dev.frontapp.com/reference/create-tag
    */
-  async create(body: CreateTag): Promise<FrontTags> {
-    const data = await this.base.requestJson<TagResponse>("POST", "/tags", {
-      body,
-    });
-    return new FrontTags(this.base, data);
+  async create(body: CreateTagParams): Promise<TagResponse> {
+    return await this.base.requestJson<TagResponse>("POST", "/tags", { body });
   }
 
   /**
@@ -336,12 +125,85 @@ export class FrontTags extends FrontResource<TagResponse, TagUpdateInput> {
    * @param tagId Tag id, or a supported [resource alias](https://dev.frontapp.com/docs/resource-aliases-1).
    * @see https://dev.frontapp.com/reference/get-tag
    */
-  async get(tagId: string): Promise<FrontTags> {
-    return await this.target(tagId).refresh();
+  async get(tagId: string): Promise<TagResponse> {
+    return await this.base.requestJson<TagResponse>("GET", tagPath(tagId));
   }
 
-  /** Target a tag by id without calling the API first. */
-  private target(tagId: string): FrontTags {
-    return new FrontTags(this.base, undefined, tagId);
+  /**
+   * Update a tag (`PATCH /tags/{tag_id}`). The API returns `204`.
+   *
+   * **Required scope:** `tags:write`
+   *
+   * @see https://dev.frontapp.com/reference/update-a-tag
+   */
+  async update(tagId: string, body: UpdateTagParams): Promise<void> {
+    await this.base.requestJson<undefined>("PATCH", tagPath(tagId), { body });
+  }
+
+  /**
+   * Delete a tag (`DELETE /tags/{tag_id}`).
+   *
+   * **Required scope:** `tags:delete`
+   */
+  async delete(tagId: string): Promise<void> {
+    await this.base.requestJson<undefined>("DELETE", tagPath(tagId));
+  }
+
+  /**
+   * List child tags (`GET /tags/{tag_id}/children`).
+   *
+   * **Required scope:** `tags:read`
+   *
+   * @see https://dev.frontapp.com/reference/list-tag-children
+   */
+  async listChildren(
+    tagId: string,
+    params?: NextPageParams,
+  ): Promise<WithNormalizedPagination<ListTagChildrenResponse>> {
+    return await this.base.requestJson<WithNormalizedPagination<ListTagChildrenResponse>>(
+      "GET",
+      `${tagPath(tagId)}/children`,
+      {
+        query:
+          params?.nextPageUrl === undefined
+            ? undefined
+            : FrontBase.queryFromNextPageUrl(params.nextPageUrl, `${tagPath(tagId)}/children`),
+      },
+    );
+  }
+
+  /**
+   * Create a child tag (`POST /tags/{tag_id}/children`).
+   *
+   * **Required scope:** `tags:write`
+   *
+   * @see https://dev.frontapp.com/reference/create-child-tag
+   */
+  async createChild(tagId: string, body: CreateChildTagParams): Promise<TagResponse> {
+    return await this.base.requestJson<TagResponse>("POST", `${tagPath(tagId)}/children`, { body });
+  }
+
+  /**
+   * List conversations that have a tag (`GET /tags/{tag_id}/conversations`).
+   * When provided, `nextPageUrl` overrides all other query parameters.
+   *
+   * **Required scope:** `conversations:read`
+   *
+   * @see https://dev.frontapp.com/reference/list-tagged-conversations
+   */
+  async listTaggedConversations(
+    tagId: string,
+    query?: ListTaggedConversationsParams,
+  ): Promise<WithNormalizedPagination<ListTaggedConversationsResponse>> {
+    return await this.base.requestJson<WithNormalizedPagination<ListTaggedConversationsResponse>>(
+      "GET",
+      `${tagPath(tagId)}/conversations`,
+      {
+        query:
+          query?.nextPageUrl === undefined
+            ? queryFromTaggedConversations(query)
+            : FrontBase.queryFromNextPageUrl(query.nextPageUrl, `${tagPath(tagId)}/conversations`),
+      },
+    );
   }
 }
