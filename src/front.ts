@@ -1,4 +1,6 @@
 import { FrontBase } from "./base";
+import type { FrontBaseOptions } from "./base";
+import { FrontApiError } from "./errors";
 import { FrontAccounts } from "./resources/accounts";
 import { FrontAnalytics } from "./resources/analytics";
 import { FrontApplications } from "./resources/applications";
@@ -29,22 +31,15 @@ import { FrontTeams } from "./resources/teams";
 import { FrontViews } from "./resources/views";
 
 const DEFAULT_BASE_URL = "https://api2.frontapp.com";
+const OAUTH_TOKEN_URL = "https://app.frontapp.com/oauth/token";
 
-const resolveFrontApiToken = (): string | undefined => {
-  const raw = process.env.FRONT_API_TOKEN;
-  if (!raw) {
-    return;
-  }
-  const v = raw.trim();
-  return v.length > 0 ? v : undefined;
-};
+const trimToUndefined = (value: string | undefined): string | undefined =>
+  value?.trim() || undefined;
 
-/** Options for the {@link Front} client constructor. */
-export interface FrontOptions {
-  /**
-   * Front API token (Bearer). If omitted, reads `FRONT_API_TOKEN` from `process.env`.
-   */
-  apiKey?: string;
+const resolveFrontApiToken = (): string | undefined => trimToUndefined(process.env.FRONT_API_TOKEN);
+
+/** Shared HTTP overrides for {@link Front}. */
+export interface FrontRequestOptions {
   /** Override the API base URL (default `https://api2.frontapp.com`). */
   baseUrl?: string;
   /** Use a custom `fetch` implementation (defaults to `globalThis.fetch`). */
@@ -52,6 +47,94 @@ export interface FrontOptions {
   /** Override the User-Agent header sent with every request. */
   userAgent?: string;
 }
+
+/** API-token credentials for {@link Front}. */
+export type FrontApiKeyOptions = FrontRequestOptions & {
+  /**
+   * Front API token (Bearer). If omitted, reads `FRONT_API_TOKEN` from `process.env`.
+   */
+  apiKey?: string;
+  accessToken?: never;
+  refreshToken?: never;
+  onTokenRefresh?: never;
+};
+
+/** OAuth credentials for {@link Front}. Mutually exclusive with {@link FrontApiKeyOptions.apiKey}. */
+export type FrontOAuthOptions = FrontRequestOptions & {
+  apiKey?: never;
+  /** OAuth access token sent as `Authorization: Bearer` on API requests. */
+  accessToken: string;
+  /** OAuth refresh token used by {@link Front.refreshOAuthToken}. */
+  refreshToken: string;
+  /** Optionally provide a function to handle the new tokens. */
+  onTokenRefresh?: (tokens: FrontOAuthTokenResponse) => void | Promise<void>;
+};
+
+/** Options for the {@link Front} client constructor. */
+export type FrontOptions = FrontApiKeyOptions | FrontOAuthOptions;
+
+/** Parameters for {@link Front.refreshOAuthToken}. */
+export interface FrontOAuthRefreshParams {
+  /** OAuth application client ID. */
+  clientId: string;
+  /** OAuth application client secret. */
+  clientSecret: string;
+}
+
+/**
+ * Successful response from Front’s OAuth token endpoint.
+ *
+ * @see https://dev.frontapp.com/docs/oauth
+ */
+export interface FrontOAuthTokenResponse {
+  access_token: string;
+  refresh_token: string;
+}
+
+type ResolvedFrontAuth =
+  | { type: "apiKey"; token: string }
+  | { type: "oauth"; accessToken: string; refreshToken: string };
+
+const isFrontOAuthTokenResponse = (value: unknown): value is FrontOAuthTokenResponse =>
+  typeof value === "object" &&
+  value !== null &&
+  "access_token" in value &&
+  "refresh_token" in value &&
+  typeof value.access_token === "string" &&
+  typeof value.refresh_token === "string";
+
+const encodeBasicAuth = (clientId: string, clientSecret: string): string =>
+  Buffer.from(`${clientId}:${clientSecret}`, "utf-8").toString("base64");
+
+export const resolveFrontAuth = (options?: {
+  apiKey?: string;
+  accessToken?: string;
+  refreshToken?: string;
+}): ResolvedFrontAuth => {
+  const apiKey = trimToUndefined(options?.apiKey);
+  const accessToken = trimToUndefined(options?.accessToken);
+  const refreshToken = trimToUndefined(options?.refreshToken);
+
+  if (apiKey && (accessToken || refreshToken)) {
+    throw new Error(
+      "Front credentials must be either an API key or OAuth tokens, not both. Pass { apiKey } or { accessToken, refreshToken }.",
+    );
+  }
+  if (accessToken || refreshToken) {
+    if (!accessToken || !refreshToken) {
+      throw new Error("OAuth credentials require both accessToken and refreshToken.");
+    }
+    return { accessToken, refreshToken, type: "oauth" };
+  }
+
+  const token = apiKey ?? resolveFrontApiToken();
+  if (!token) {
+    throw new Error(
+      'Front credentials are required. Set FRONT_API_TOKEN in the environment, or pass { apiKey: "..." } or { accessToken, refreshToken } to the Front constructor.',
+    );
+  }
+  return { token, type: "apiKey" };
+};
 
 /**
  * Application entry point for the Front REST API.
@@ -121,24 +204,30 @@ export class Front extends FrontBase {
   /** Views under `/views`. */
   readonly views: FrontViews;
 
+  private oauthRefreshToken: string | undefined;
+  private readonly onTokenRefresh: FrontOAuthOptions["onTokenRefresh"];
+
   /**
-   * @param options API credentials and optional HTTP overrides. A token is required either here or via `FRONT_API_TOKEN`.
-   * @throws {Error} when no API token can be resolved.
+   * @param options API credentials and optional HTTP overrides. A token is required
+   * as `{ apiKey }`, `{ accessToken, refreshToken }`, or `FRONT_API_TOKEN`.
+   * @throws {Error} when credentials cannot be resolved, are incomplete, or mix API key with OAuth tokens.
    */
   constructor(options?: FrontOptions) {
-    const { apiKey, baseUrl, fetch: fetchOption, userAgent } = options ?? {};
-    const token = apiKey ?? resolveFrontApiToken();
-    if (!token) {
-      throw new Error(
-        'Front API token is required. Set FRONT_API_TOKEN in the environment or pass { apiKey: "..." } to the Front constructor.',
-      );
-    }
-    super({
-      apiKey: token,
+    const auth = resolveFrontAuth(options);
+    const { baseUrl, fetch: fetchOption, userAgent } = options ?? {};
+    const baseOptions: FrontBaseOptions = {
+      apiKey: auth.type === "oauth" ? auth.accessToken : auth.token,
       baseUrl: baseUrl ?? DEFAULT_BASE_URL,
-      ...(fetchOption === undefined ? {} : { fetch: fetchOption }),
-      ...(userAgent === undefined ? {} : { userAgent }),
-    });
+    };
+    if (fetchOption !== undefined) {
+      baseOptions.fetch = fetchOption;
+    }
+    if (userAgent !== undefined) {
+      baseOptions.userAgent = userAgent;
+    }
+    super(baseOptions);
+    this.oauthRefreshToken = auth.type === "oauth" ? auth.refreshToken : undefined;
+    this.onTokenRefresh = options?.onTokenRefresh;
     this.accounts = new FrontAccounts(this);
     this.analytics = new FrontAnalytics(this);
     this.applications = new FrontApplications(this);
@@ -167,5 +256,64 @@ export class Front extends FrontBase {
     this.teammates = new FrontTeammates(this);
     this.teams = new FrontTeams(this);
     this.views = new FrontViews(this);
+  }
+
+  /**
+   * Exchange the stored refresh token for a new access and refresh token pair.
+   * Awaits `onTokenRefresh` before adopting the tokens. If the callback throws,
+   * the refresh rejects and the client's credentials remain unchanged.
+   * Does not run automatically on HTTP 401.
+   *
+   * @see https://dev.frontapp.com/docs/oauth
+   */
+  async refreshOAuthToken(params: FrontOAuthRefreshParams): Promise<FrontOAuthTokenResponse> {
+    const refreshToken = this.oauthRefreshToken;
+    if (!refreshToken) {
+      throw new Error(
+        "refreshOAuthToken() requires the Front client to be constructed with accessToken and refreshToken.",
+      );
+    }
+    const clientId = trimToUndefined(params.clientId);
+    const clientSecret = trimToUndefined(params.clientSecret);
+    if (!clientId || !clientSecret) {
+      throw new Error("refreshOAuthToken() requires clientId and clientSecret.");
+    }
+
+    const response = await this.fetchImpl(OAUTH_TOKEN_URL, {
+      body: JSON.stringify({
+        grant_type: "refresh_token",
+        refresh_token: refreshToken,
+      }),
+      headers: {
+        Accept: "application/json",
+        Authorization: `Basic ${encodeBasicAuth(clientId, clientSecret)}`,
+        "Content-Type": "application/json",
+        "User-Agent": this.userAgent,
+      },
+      method: "POST",
+    });
+
+    const text = await response.text();
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      parsed = text;
+    }
+    if (!response.ok) {
+      throw new FrontApiError(response, parsed);
+    }
+    if (!isFrontOAuthTokenResponse(parsed)) {
+      throw new Error("Front OAuth token response is missing access_token or refresh_token.");
+    }
+
+    const tokens = {
+      access_token: parsed.access_token,
+      refresh_token: parsed.refresh_token,
+    };
+    await this.onTokenRefresh?.({ ...tokens });
+    this.apiKey = tokens.access_token;
+    this.oauthRefreshToken = tokens.refresh_token;
+    return tokens;
   }
 }
