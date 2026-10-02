@@ -42,7 +42,7 @@ const appendQuery = (url: string, query?: Record<string, string | undefined>): s
  * Shared HTTP layer for the Front API. {@link Front} extends this class and attaches resource helpers.
  */
 export class FrontBase {
-  protected readonly apiKey: string;
+  protected apiKey: string;
   protected readonly baseUrl: string;
   protected readonly fetchImpl: typeof fetch;
   protected readonly userAgent: string;

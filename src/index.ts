@@ -1,6 +1,14 @@
 export { FrontBase, type FrontBaseOptions } from "./base";
 export { FrontApiError } from "./errors";
-export { Front, type FrontOptions } from "./front";
+export {
+  Front,
+  type FrontApiKeyOptions,
+  type FrontOAuthOptions,
+  type FrontOAuthRefreshParams,
+  type FrontOAuthTokenResponse,
+  type FrontOptions,
+  type FrontRequestOptions,
+} from "./front";
 export {
   normalizeFrontResponse,
   type PaginationInfo,
