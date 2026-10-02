@@ -2,15 +2,17 @@ import { describe, expect, test } from "bun:test";
 
 import { normalizeFrontResponse, pageTokenFromPaginationNextUrl } from "../src/normalize-response";
 
+import { PAGE_TOKEN } from "./helpers/pagination";
+
 const base = "https://api2.frontapp.com";
 
 describe("pageTokenFromPaginationNextUrl", () => {
   test("extracts page_token from absolute next URL", () => {
     expect(
       pageTokenFromPaginationNextUrl(
-        "https://api2.frontapp.com/accounts?page_token=tok_1&limit=25",
+        `https://api2.frontapp.com/accounts?page_token=${PAGE_TOKEN}&limit=25`,
       ),
-    ).toBe("tok_1");
+    ).toBe(PAGE_TOKEN);
   });
 
   test("returns null when not a URL", () => {
@@ -25,17 +27,17 @@ describe("pageTokenFromPaginationNextUrl", () => {
 });
 
 describe("normalizeFrontResponse", () => {
-  test("renames _pagination to pagination and strips next URL", () => {
+  test("renames _pagination and preserves the next URL", () => {
     const raw = {
       _pagination: {
-        next: `${base}/tags?page_token=xyz&limit=50`,
+        next: `${base}/tags?page_token=${PAGE_TOKEN}&limit=50`,
       },
       _results: [{ id: "tag_1" }],
     };
     const n = normalizeFrontResponse(raw);
     expect(n).toEqual({
       _results: [{ id: "tag_1" }],
-      pagination: { next: "xyz" },
+      pagination: { next: raw._pagination.next },
     });
     expect(n).not.toHaveProperty("_pagination");
   });

@@ -4,6 +4,12 @@ import { normalizeFrontResponse } from "./normalize-response";
 
 const DEFAULT_USER_AGENT = `${packageJson.name}@${packageJson.version}`;
 
+/** Options for fetching a subsequent list page. */
+export interface NextPageParams {
+  /** Full next-page URL from pagination.next. Overrides all other list parameters. */
+  nextPageUrl?: string;
+}
+
 /** Options for {@link FrontBase}. */
 export interface FrontBaseOptions {
   /** Bearer token sent as `Authorization: Bearer …`. */
@@ -77,6 +83,15 @@ export class FrontBase {
     return out;
   }
 
+  /** Read the next URL's query while keeping requests on the current resource and configured origin. */
+  static queryFromNextPageUrl(nextPageUrl: string, path: string): Record<string, string> {
+    const url = new URL(nextPageUrl);
+    if ((url.protocol !== "https:" && url.protocol !== "http:") || url.pathname !== path) {
+      throw new Error("nextPageUrl must be an HTTP URL for the requested list endpoint.");
+    }
+    return Object.fromEntries(url.searchParams);
+  }
+
   /**
    * Perform an HTTP request with JSON request/response handling.
    *
@@ -84,7 +99,7 @@ export class FrontBase {
    * returns `undefined` for status `204` or empty bodies. On failure, throws {@link FrontApiError}.
    *
    * Successful JSON is passed through {@link normalizeFrontResponse}: `_pagination` becomes `pagination`,
-   * and `pagination.next` is the `page_token` string (parsed from the API’s full next-page URL when needed).
+   * and `pagination.next` preserves the API’s full next-page URL.
    *
    * @param method HTTP verb (`GET`, `POST`, `PATCH`, …).
    * @param path Absolute path beginning with `/` (e.g. `"/tags"`).

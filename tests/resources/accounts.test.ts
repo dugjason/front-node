@@ -1,31 +1,31 @@
 import { describe, expect, test } from "bun:test";
 
 import { FrontAccounts } from "../../src/index";
+import { PAGE_TOKEN } from "../helpers/pagination";
 import { createMockClient, createTestSetup, jsonResponse } from "../helpers/setup";
 
 describe("accounts", () => {
   test("accounts.list sends GET /accounts with query", async () => {
     const { front, requests } = createTestSetup();
-    const rr = await front.accounts.list({ limit: 10, sort_by: "updated_at" });
-    if (rr.pagination?.next) {
-      await front.accounts.list({ page_token: rr.pagination.next });
-    }
+    await front.accounts.list({ limit: 10, sort_by: "updated_at" });
     const [listReq] = requests;
     expect(listReq?.method).toBe("GET");
     expect(listReq?.url).toBe("https://api2.frontapp.com/accounts?limit=10&sort_by=updated_at");
   });
 
-  test("accounts.list normalizes pagination.next to page_token only", async () => {
+  test("accounts.list preserves the next-page URL", async () => {
     const { front } = createMockClient(() =>
       jsonResponse({
         _pagination: {
-          next: "https://api2.frontapp.com/accounts?page_token=tok_list&limit=25",
+          next: `https://api2.frontapp.com/accounts?page_token=${PAGE_TOKEN}&limit=25`,
         },
         _results: [],
       }),
     );
     const body = await front.accounts.list();
-    expect(body.pagination?.next).toBe("tok_list");
+    expect(body.pagination?.next).toBe(
+      `https://api2.frontapp.com/accounts?page_token=${PAGE_TOKEN}&limit=25`,
+    );
   });
 
   test("accounts.get returns a hydrated FrontAccounts instance", async () => {

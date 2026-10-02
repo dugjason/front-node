@@ -1,3 +1,4 @@
+export type { NextPageParams } from "./base";
 export { FrontBase, type FrontBaseOptions } from "./base";
 export { FrontApiError } from "./errors";
 export {
