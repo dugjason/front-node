@@ -1,3 +1,10 @@
+import { operationRoutes } from "./gen/operation-routes.gen";
+import type {
+  OperationArgs,
+  OperationParams,
+  OperationResponse,
+  RawOperationName,
+} from "./operation";
 import packageJson from "../package.json";
 import { FrontApiError } from "./errors";
 import { normalizeFrontResponse } from "./normalize-response";
@@ -92,6 +99,50 @@ export class FrontBase {
     return Object.fromEntries(url.searchParams);
   }
 
+  /** Make a request with parameters and a response inferred from the OpenAPI operation. */
+  async requestOperation<Name extends keyof typeof operationRoutes>(
+    operation: Name,
+    ...args: OperationArgs<Name>
+  ): Promise<OperationResponse<Name>> {
+    const route = operationRoutes[operation];
+    // OperationArgs checks each endpoint's contract; this view only serializes its fields.
+    const params = args[0] as
+      | {
+          path?: Record<string, string>;
+          query?: Record<string, string | number | boolean | undefined>;
+          body?: unknown;
+          nextPageUrl?: string;
+        }
+      | undefined;
+    const path = FrontBase.expandPath(route.path, params?.path ?? {});
+    const query =
+      params?.query === undefined
+        ? undefined
+        : Object.fromEntries(
+            Object.entries(params.query).map(([key, value]) => [
+              key,
+              value === undefined ? undefined : String(value),
+            ]),
+          );
+    return await this.requestJson<OperationResponse<Name>>(route.method, path, {
+      body: params?.body,
+      nextPageUrl: params?.nextPageUrl,
+      query,
+    });
+  }
+
+  /** Request an OpenAPI endpoint without consuming its response body. */
+  async requestOperationRaw<Name extends RawOperationName>(
+    operation: Name,
+    params: OperationParams<Name>,
+    init?: { headers?: Record<string, string | undefined> },
+  ): Promise<Response> {
+    const route = operationRoutes[operation];
+    const fields = params as { path?: Record<string, string> };
+    const path = FrontBase.expandPath(route.path, fields.path ?? {});
+    return await this.requestWithoutParsingBody(route.method, path, init);
+  }
+
   /**
    * Perform an HTTP request with JSON request/response handling.
    *
@@ -103,14 +154,22 @@ export class FrontBase {
    *
    * @param method HTTP verb (`GET`, `POST`, `PATCH`, …).
    * @param path Absolute path beginning with `/` (e.g. `"/tags"`).
-   * @param init Optional query string and JSON-serializable body.
+   * @param init Optional query string, JSON-serializable body, and next-page URL.
+   * `nextPageUrl` on GET requests overrides the supplied query parameters.
    */
   async requestJson<TResult>(
     method: string,
     path: string,
-    init?: { query?: Record<string, string | undefined>; body?: unknown },
+    init?: { query?: Record<string, string | undefined>; body?: unknown } & NextPageParams,
   ): Promise<TResult> {
-    const url = this.buildUrl(path, init?.query);
+    if (init?.nextPageUrl !== undefined && method !== "GET") {
+      throw new Error("nextPageUrl is only supported for GET requests.");
+    }
+    const query =
+      init?.nextPageUrl === undefined
+        ? init?.query
+        : FrontBase.queryFromNextPageUrl(init.nextPageUrl, path);
+    const url = this.buildUrl(path, query);
     const headers = new Headers({
       Accept: "application/json",
       Authorization: `Bearer ${this.apiKey}`,
