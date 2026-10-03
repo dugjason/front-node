@@ -1,10 +1,9 @@
 import { describe, expect, test } from "bun:test";
 
-import { FrontAnalyticsExport, FrontAnalyticsReport } from "../../src/index";
 import { createMockClient, jsonResponse } from "../helpers/setup";
 
 describe("analytics", () => {
-  test("analytics.createExport posts and returns FrontAnalyticsExport", async () => {
+  test("analytics.createExport posts and returns export response data", async () => {
     const { front, requests } = createMockClient((req) => {
       if (req.method === "POST" && req.url === "https://api2.frontapp.com/analytics/exports") {
         return jsonResponse(
@@ -28,13 +27,12 @@ describe("analytics", () => {
       start: 0,
       type: "messages",
     });
-    expect(exp).toBeInstanceOf(FrontAnalyticsExport);
     expect(exp.id).toBe("exp_1");
     expect(requests[0]?.method).toBe("POST");
     expect(requests[0]?.url).toBe("https://api2.frontapp.com/analytics/exports");
   });
 
-  test("analytics.getExport sends GET and refresh refetches", async () => {
+  test("analytics.getExport sends GET returns the current job status", async () => {
     let getCount = 0;
     const { front, requests } = createMockClient((req) => {
       if (req.method === "GET" && req.url.includes("/analytics/exports/exp_1")) {
@@ -52,13 +50,13 @@ describe("analytics", () => {
       return jsonResponse({});
     });
     const exp = await front.analytics.getExport("exp_1");
-    expect(exp.data.status).toBe("running");
-    await exp.refresh();
-    expect(exp.data.status).toBe("done");
+    expect(exp.status).toBe("running");
+    const completed = await front.analytics.getExport("exp_1");
+    expect(completed.status).toBe("done");
     expect(requests.filter((r) => r.method === "GET")).toHaveLength(2);
   });
 
-  test("analytics.createReport posts and returns FrontAnalyticsReport", async () => {
+  test("analytics.createReport posts and returns report response data", async () => {
     const { front, requests } = createMockClient((req) => {
       if (req.method === "POST" && req.url === "https://api2.frontapp.com/analytics/reports") {
         return jsonResponse(
@@ -81,7 +79,6 @@ describe("analytics", () => {
       metrics: ["new_segments_count"],
       start: 0,
     });
-    expect(rep).toBeInstanceOf(FrontAnalyticsReport);
     expect(rep.uid).toBe("uid_a");
     expect(requests[0]?.url).toBe("https://api2.frontapp.com/analytics/reports");
   });
@@ -102,7 +99,7 @@ describe("analytics", () => {
       return jsonResponse({});
     });
     const rep = await front.analytics.getReport("uid_b");
-    expect(rep.data.status).toBe("done");
+    expect(rep.status).toBe("done");
     expect(requests[0]?.method).toBe("GET");
     expect(requests[0]?.url).toBe("https://api2.frontapp.com/analytics/reports/uid_b");
   });

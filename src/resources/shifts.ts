@@ -1,241 +1,96 @@
-import { FrontBase } from "../base";
-import type { components, operations } from "../gen/schema.gen";
-import type { WithNormalizedPagination } from "../normalize-response";
-import { FrontResource } from "../resource";
-import { FrontTeammates } from "./teammates";
+import type { FrontBase } from "../base";
+import type { OperationParams, OperationResponse } from "../operation";
+import type { components } from "../gen/schema.gen";
 
 export type ShiftResponse = components["schemas"]["ShiftResponse"];
-export type CreateShift = components["schemas"]["CreateShift"];
-export type UpdateShift = components["schemas"]["UpdateShift"];
 
-type ListShiftsResponse =
-  operations["list-shifts"]["responses"][200]["content"]["application/json"];
+export type CreateShiftParams = NonNullable<OperationParams<"create-shift">["body"]>;
+export type UpdateShiftParams = NonNullable<OperationParams<"update-shift">["body"]>;
+export type AddShiftTeammatesParams = NonNullable<
+  OperationParams<"add-teammates-to-shift">["body"]
+>;
+export type RemoveShiftTeammatesParams = NonNullable<
+  OperationParams<"remove-teammates-from-shift">["body"]
+>;
 
-type ListShiftsTeammatesResponse =
-  operations["list-shifts-teammates"]["responses"][200]["content"]["application/json"];
+/** Collection operations returning Front response data. */
+export class FrontShifts {
+  private readonly base: FrontBase;
 
-const mergeShiftSnapshot = (current: ShiftResponse, patch: Partial<UpdateShift>): ShiftResponse => {
-  const { times: patchTimes, ...restPatch } = patch;
-  const filteredRest = Object.fromEntries(
-    Object.entries(restPatch).filter(([, value]) => value !== undefined),
-  ) as Partial<Omit<UpdateShift, "times">>;
-  let next: ShiftResponse = { ...current, ...filteredRest };
-  if (patchTimes !== undefined) {
-    next = {
-      ...next,
-      times: { ...current.times, ...patchTimes },
-    };
-  }
-  return next;
-};
-
-const shiftResponseToUpdateBody = (state: ShiftResponse): UpdateShift => ({
-  color: state.color,
-  name: state.name,
-  times: state.times,
-  timezone: state.timezone,
-});
-
-/**
- * One shift (`/shifts/{shift_id}` and `/shifts/{shift_id}/teammates`).
- *
- * Writable: `name`, `color`, `timezone`, `times`. Read-only: `id`, `createdAt`, `updatedAt`, `links`.
- * `PATCH` returns `204`; {@link update} and {@link save} merge the request into local state.
- *
- * @see https://dev.frontapp.com/reference/shifts
- */
-export class FrontShifts extends FrontResource<ShiftResponse, UpdateShift> {
-  protected selfPath(): string {
-    return FrontBase.expandPath("/shifts/{shift_id}", { shift_id: this.id });
+  constructor(base: FrontBase) {
+    this.base = base;
   }
 
-  get name(): string {
-    return this.pick("name");
-  }
-
-  set name(value: string) {
-    this.assign("name", value);
-  }
-
-  get color(): ShiftResponse["color"] {
-    return this.pick("color");
-  }
-
-  set color(value: ShiftResponse["color"]) {
-    this.assign("color", value);
-  }
-
-  get timezone(): string {
-    return this.pick("timezone");
-  }
-
-  set timezone(value: string) {
-    this.assign("timezone", value);
-  }
-
-  get times(): ShiftResponse["times"] {
-    return this.pick("times");
-  }
-
-  set times(value: ShiftResponse["times"]) {
-    this.assign("times", value);
-  }
-
-  get createdAt(): number | undefined {
-    return this.pick("created_at");
-  }
-
-  get updatedAt(): number | undefined {
-    return this.pick("updated_at");
-  }
-
-  toUpdateBody(): UpdateShift {
-    return shiftResponseToUpdateBody(this.state);
-  }
-
-  /**
-   * Update this shift (`PATCH /shifts/{shift_id}`). Returns `204`; local state is merged.
-   *
-   * **Required scope:** `shifts:write`
-   *
-   * @see https://dev.frontapp.com/reference/update-shift
-   */
-  async update(body: UpdateShift | Partial<UpdateShift>): Promise<void>;
-  async update(shiftId: string, body: UpdateShift | Partial<UpdateShift>): Promise<void>;
-  async update(
-    bodyOrShiftId: UpdateShift | Partial<UpdateShift> | string,
-    directBody?: UpdateShift | Partial<UpdateShift>,
-  ): Promise<void> {
-    if (typeof bodyOrShiftId === "string") {
-      await this.target(bodyOrShiftId).update(directBody ?? {});
-      return;
-    }
-    await this.patchNoContent(bodyOrShiftId, mergeShiftSnapshot);
-  }
-
-  override async delete(shiftId?: string): Promise<void> {
-    if (shiftId === undefined) {
-      await super.delete();
-      return;
-    }
-    await this.target(shiftId).delete();
-  }
-
-  /**
-   * List teammates on the shift (`GET /shifts/{shift_id}/teammates`).
-   *
-   * **Required scope:** `teammates:read`
-   *
-   * @see https://dev.frontapp.com/reference/list-shifts-teammates
-   */
-  async listTeammates(shiftId?: string): Promise<FrontTeammates[]> {
-    if (shiftId !== undefined) {
-      return await this.target(shiftId).listTeammates();
-    }
-    const path = FrontBase.expandPath("/shifts/{shift_id}/teammates", {
-      shift_id: this.id,
-    });
-    const json = await this.base.requestJson<WithNormalizedPagination<ListShiftsTeammatesResponse>>(
-      "GET",
-      path,
-    );
-    const results = json._results ?? [];
-    return results.map((row) => new FrontTeammates(this.base, row));
-  }
-
-  /**
-   * Add teammates (`POST /shifts/{shift_id}/teammates`).
-   *
-   * **Required scope:** `shifts:write`
-   *
-   * @see https://dev.frontapp.com/reference/add-teammates-to-shift
-   */
-  async addTeammates(body: components["schemas"]["TeammateIds"]): Promise<void>;
-  async addTeammates(shiftId: string, body: components["schemas"]["TeammateIds"]): Promise<void>;
-  async addTeammates(
-    bodyOrShiftId: components["schemas"]["TeammateIds"] | string,
-    directBody?: components["schemas"]["TeammateIds"],
-  ): Promise<void> {
-    if (typeof bodyOrShiftId === "string") {
-      if (directBody === undefined) {
-        throw new Error("Adding teammates requires a request body.");
-      }
-      await this.target(bodyOrShiftId).addTeammates(directBody);
-      return;
-    }
-    const path = FrontBase.expandPath("/shifts/{shift_id}/teammates", {
-      shift_id: this.id,
-    });
-    await this.base.requestJson<undefined>("POST", path, { body: bodyOrShiftId });
-  }
-
-  /**
-   * Remove teammates (`DELETE /shifts/{shift_id}/teammates`).
-   *
-   * **Required scope:** `shifts:write`
-   *
-   * @see https://dev.frontapp.com/reference/remove-teammates-from-shift
-   */
-  async removeTeammates(body: components["schemas"]["TeammateIds"]): Promise<void>;
-  async removeTeammates(shiftId: string, body: components["schemas"]["TeammateIds"]): Promise<void>;
-  async removeTeammates(
-    bodyOrShiftId: components["schemas"]["TeammateIds"] | string,
-    directBody?: components["schemas"]["TeammateIds"],
-  ): Promise<void> {
-    if (typeof bodyOrShiftId === "string") {
-      if (directBody === undefined) {
-        throw new Error("Removing teammates requires a request body.");
-      }
-      await this.target(bodyOrShiftId).removeTeammates(directBody);
-      return;
-    }
-    const path = FrontBase.expandPath("/shifts/{shift_id}/teammates", {
-      shift_id: this.id,
-    });
-    await this.base.requestJson<undefined>("DELETE", path, { body: bodyOrShiftId });
-  }
-
-  /**
-   * List shifts (`GET /shifts`).
-   *
-   * **Required scope:** `shifts:read`
-   *
+  /** GET /shifts
+   * Required scope: `shifts:read`
    * @see https://dev.frontapp.com/reference/list-shifts
    */
-  async list(): Promise<WithNormalizedPagination<ListShiftsResponse>> {
-    return await this.base.requestJson<WithNormalizedPagination<ListShiftsResponse>>(
-      "GET",
-      "/shifts",
-    );
+  async list(): Promise<OperationResponse<"list-shifts">> {
+    return await this.base.requestOperation("list-shifts");
   }
 
-  /**
-   * Create a shift (`POST /shifts`).
-   *
-   * **Required scope:** `shifts:write`
-   *
+  /** POST /shifts
+   * Required scope: `shifts:write`
    * @see https://dev.frontapp.com/reference/create-shift
    */
-  async create(body: CreateShift): Promise<FrontShifts> {
-    const data = await this.base.requestJson<ShiftResponse>("POST", "/shifts", {
-      body,
-    });
-    return new FrontShifts(this.base, data);
+  async create(body: CreateShiftParams): Promise<OperationResponse<"create-shift">> {
+    return await this.base.requestOperation("create-shift", { body });
   }
 
-  /**
-   * Fetch one shift (`GET /shifts/{shift_id}`).
-   *
-   * **Required scope:** `shifts:read`
-   *
+  /** GET /shifts/{shift_id}
+   * Required scope: `shifts:read`
    * @see https://dev.frontapp.com/reference/get-shift
    */
-  async get(shiftId: string): Promise<FrontShifts> {
-    return await this.target(shiftId).refresh();
+  async get(shiftId: string): Promise<OperationResponse<"get-shift">> {
+    return await this.base.requestOperation("get-shift", { path: { shift_id: shiftId } });
   }
 
-  /** Target a shift by id without calling the API first. */
-  private target(shiftId: string): FrontShifts {
-    return new FrontShifts(this.base, undefined, shiftId);
+  /** PATCH /shifts/{shift_id}
+   * Required scope: `shifts:write`
+   * @see https://dev.frontapp.com/reference/update-shift
+   */
+  async update(
+    shiftId: string,
+    body: UpdateShiftParams,
+  ): Promise<OperationResponse<"update-shift">> {
+    return await this.base.requestOperation("update-shift", { body, path: { shift_id: shiftId } });
+  }
+
+  /** GET /shifts/{shift_id}/teammates
+   * Required scope: `teammates:read`
+   * @see https://dev.frontapp.com/reference/list-shifts-teammates
+   */
+  async listTeammates(shiftId: string): Promise<OperationResponse<"list-shifts-teammates">> {
+    return await this.base.requestOperation("list-shifts-teammates", {
+      path: { shift_id: shiftId },
+    });
+  }
+
+  /** POST /shifts/{shift_id}/teammates
+   * Required scope: `shifts:write`
+   * @see https://dev.frontapp.com/reference/add-teammates-to-shift
+   */
+  async addTeammates(
+    shiftId: string,
+    body: AddShiftTeammatesParams,
+  ): Promise<OperationResponse<"add-teammates-to-shift">> {
+    return await this.base.requestOperation("add-teammates-to-shift", {
+      body,
+      path: { shift_id: shiftId },
+    });
+  }
+
+  /** DELETE /shifts/{shift_id}/teammates
+   * Required scope: `shifts:write`
+   * @see https://dev.frontapp.com/reference/remove-teammates-from-shift
+   */
+  async removeTeammates(
+    shiftId: string,
+    body?: RemoveShiftTeammatesParams,
+  ): Promise<OperationResponse<"remove-teammates-from-shift">> {
+    return await this.base.requestOperation("remove-teammates-from-shift", {
+      body,
+      path: { shift_id: shiftId },
+    });
   }
 }

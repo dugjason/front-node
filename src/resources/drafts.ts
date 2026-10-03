@@ -1,18 +1,10 @@
-import { FrontBase } from "../base";
-import type { components, operations } from "../gen/schema.gen";
+import type { FrontBase } from "../base";
+import type { OperationParams, OperationResponse } from "../operation";
 
-export type DeleteDraft = components["schemas"]["DeleteDraft"];
-export type EditDraft = components["schemas"]["EditDraft"];
+export type DeleteDraftParams = NonNullable<OperationParams<"delete-draft">["body"]>;
+export type EditDraftParams = NonNullable<OperationParams<"edit-draft">["body"]>;
 
-type EditDraftMessageResponse =
-  operations["edit-draft"]["responses"][200]["content"]["application/json"];
-
-/**
- * Standalone draft delete and edit (`DELETE /drafts/{draft_id}`, `PATCH /drafts/{message_id}/`).
- *
- * @see https://dev.frontapp.com/reference/delete-draft
- * @see https://dev.frontapp.com/reference/edit-draft
- */
+/** Collection operations returning Front response data. */
 export class FrontDrafts {
   private readonly base: FrontBase;
 
@@ -20,29 +12,25 @@ export class FrontDrafts {
     this.base = base;
   }
 
-  /**
-   * Delete a draft (`DELETE /drafts/{draft_id}`).
-   *
-   * **Required scope:** `drafts:delete`
+  /** DELETE /drafts/{draft_id}
+   * Required scope: `drafts:delete`
+   * @see https://dev.frontapp.com/reference/delete-draft
    */
-  async delete(draftId: string, body?: DeleteDraft): Promise<void> {
-    const path = FrontBase.expandPath("/drafts/{draft_id}", {
-      draft_id: draftId,
-    });
-    await this.base.requestJson<undefined>("DELETE", path, { body });
+  async delete(
+    draftId: string,
+    body?: DeleteDraftParams,
+  ): Promise<OperationResponse<"delete-draft">> {
+    return await this.base.requestOperation("delete-draft", { body, path: { draft_id: draftId } });
   }
 
-  /**
-   * Edit a draft (`PATCH /drafts/{message_id}/`). The path keeps a trailing slash after the message id.
-   *
-   * **Required scope:** `drafts:write`
+  /** PATCH /drafts/{message_id}
+   * Required scope: `drafts:write`
+   * @see https://dev.frontapp.com/reference/edit-draft
    */
-  async edit(messageId: string, body: EditDraft): Promise<EditDraftMessageResponse> {
-    const path = FrontBase.expandPath("/drafts/{message_id}/", {
-      message_id: messageId,
-    });
-    return await this.base.requestJson<EditDraftMessageResponse>("PATCH", path, {
+  async edit(messageId: string, body: EditDraftParams): Promise<OperationResponse<"edit-draft">> {
+    return await this.base.requestOperation("edit-draft", {
       body,
+      path: { message_id: messageId },
     });
   }
 }

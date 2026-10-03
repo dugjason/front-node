@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
 
-import { FrontAccounts } from "../../src/index";
 import { PAGE_TOKEN } from "../helpers/pagination";
 import { createMockClient, createTestSetup, jsonResponse } from "../helpers/setup";
 
@@ -28,7 +27,7 @@ describe("accounts", () => {
     );
   });
 
-  test("accounts.get returns a hydrated FrontAccounts instance", async () => {
+  test("accounts.get returns a account response data", async () => {
     const { front, requests } = createMockClient((req) => {
       const { url } = req;
       if (req.method === "GET" && url.endsWith("/accounts/acc_1")) {
@@ -46,7 +45,6 @@ describe("accounts", () => {
       return jsonResponse({ _pagination: {}, _results: [] });
     });
     const account = await front.accounts.get("acc_1");
-    expect(account).toBeInstanceOf(FrontAccounts);
     expect(account.id).toBe("acc_1");
     expect(account.name).toBe("Dunder Mifflin");
     expect(requests[0]?.url).toBe("https://api2.frontapp.com/accounts/acc_1");
@@ -60,7 +58,7 @@ describe("accounts", () => {
     expect(requests[0]?.url).toBe("https://api2.frontapp.com/accounts/acc_1/contacts");
   });
 
-  test("FrontAccounts.update applies 200 response body", async () => {
+  test("accounts.update returns the authoritative 200 response body", async () => {
     const { front } = createMockClient((req) => {
       const { url } = req;
       if (req.method === "GET" && url.endsWith("/accounts/acc_1")) {
@@ -89,8 +87,7 @@ describe("accounts", () => {
       }
       return jsonResponse({});
     });
-    const account = await front.accounts.get("acc_1");
-    await account.update({ name: "New Name" });
+    const account = await front.accounts.update("acc_1", { name: "New Name" });
     expect(account.name).toBe("New Name");
     expect(account.description).toBe("New desc");
     expect(account.domains).toEqual(["a.com", "b.com"]);

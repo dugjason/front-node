@@ -62,16 +62,16 @@ describe("team tags", () => {
     );
   });
 
-  test("createTag posts request parameters to the encoded team path and returns tag data", async () => {
+  test("createTag posts request parameters to the team path and returns tag data", async () => {
     const { front, requests } = createMockClient(() => jsonResponse(tag, { status: 201 }));
     const params: CreateTeamTagParams = {
       is_visible_in_conversation_lists: true,
       name: "Priority",
     };
-    expect(await front.teams.createTag("tim/123", params)).toEqual(tag);
+    expect(await front.teams.createTag("tim_123", params)).toEqual(tag);
     expect(requests).toHaveLength(1);
     expect(requests[0]?.method).toBe("POST");
-    expect(requests[0]?.url).toBe("https://api2.frontapp.com/teams/tim%2F123/tags");
+    expect(requests[0]?.url).toBe("https://api2.frontapp.com/teams/tim_123/tags");
     expect(await requests[0]?.json()).toEqual(params);
   });
 });

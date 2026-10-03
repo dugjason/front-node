@@ -116,18 +116,14 @@ describe("tags", () => {
     expect(requests).toHaveLength(0);
   });
 
-  test("nested tag lists accept their next-page URLs", async () => {
+  test("tagged conversation lists accept next-page URLs", async () => {
     const { front, requests } = createMockClient(() => jsonResponse({ _results: [] }));
-    await front.tags.listChildren("tag_123", {
-      nextPageUrl: `https://front.api.frontapp.com/tags/tag_123/children?page_token=${PAGE_TOKEN}`,
-    });
     await front.tags.listTaggedConversations("tag_123", {
       limit: 50,
       nextPageUrl: `https://front.api.frontapp.com/tags/tag_123/conversations?limit=5&page_token=${PAGE_TOKEN}`,
       q: "statuses=archived",
     });
     expect(requests.map((req) => req.url)).toEqual([
-      `https://api2.frontapp.com/tags/tag_123/children?page_token=${PAGE_TOKEN}`,
       `https://api2.frontapp.com/tags/tag_123/conversations?limit=5&page_token=${PAGE_TOKEN}`,
     ]);
   });
@@ -154,9 +150,13 @@ describe("tags", () => {
     ).toEqual({ _results: [], pagination: { next: null } });
     expect(requests).toHaveLength(1);
     expect(requests[0]?.method).toBe("GET");
-    expect(requests[0]?.url).toBe(
-      `https://api2.frontapp.com/tags/tag_123/conversations?q=statuses%3Darchived&limit=5&page_token=${PAGE_TOKEN}`,
-    );
+    const url = new URL(requests[0]?.url ?? "");
+    expect(url.pathname).toBe("/tags/tag_123/conversations");
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      limit: "5",
+      page_token: PAGE_TOKEN,
+      q: "statuses=archived",
+    });
   });
 
   test("company tag creation returns plain data", async () => {

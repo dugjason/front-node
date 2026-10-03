@@ -1,231 +1,347 @@
-import { FrontBase } from "../base";
-import type { components, operations } from "../gen/schema.gen";
-import type { WithNormalizedPagination } from "../normalize-response";
-import { FrontResource } from "../resource";
+import type { FrontBase } from "../base";
+import type { OperationParams, OperationListParams, OperationResponse } from "../operation";
+import type { components } from "../gen/schema.gen";
 
 export type TeammateResponse = components["schemas"]["TeammateResponse"];
-export type UpdateTeammate = components["schemas"]["UpdateTeammate"];
 export type CustomFieldParameter = components["schemas"]["CustomFieldParameter"];
 
-type ListTeammatesResponse =
-  operations["list-teammates"]["responses"][200]["content"]["application/json"];
-
-type ListAssignedConversationsQuery = NonNullable<
-  operations["list-assigned-conversations"]["parameters"]["query"]
+export type UpdateTeammateParams = NonNullable<OperationParams<"update-teammate">["body"]>;
+export type ListTeammateAssignedConversationsParams =
+  OperationListParams<"list-assigned-conversations">;
+export type CreateTeammateContactListParams = NonNullable<
+  OperationParams<"create-teammate-contact-list">["body"]
 >;
-type ListAssignedConversationsResponse =
-  operations["list-assigned-conversations"]["responses"][200]["content"]["application/json"];
+export type ListTeammateContactsParams = OperationListParams<"list-teammate-contacts">;
+export type CreateTeammateContactParams = NonNullable<
+  OperationParams<"create-teammate-contact">["body"]
+>;
+export type ListTeammateMessageTemplateFoldersParams = OperationListParams<"list-teammate-folders">;
+export type CreateTeammateMessageTemplateFolderParams = NonNullable<
+  OperationParams<"create-teammate-folder">["body"]
+>;
+export type ListTeammateMessageTemplatesParams =
+  OperationListParams<"list-teammate-message-templates">;
+export type CreateTeammateMessageTemplateParams = NonNullable<
+  OperationParams<"create-teammate-message-template">["body"]
+>;
+export type CreateTeammateSignatureParams = NonNullable<
+  OperationParams<"create-teammate-signature">["body"]
+>;
+export type ListTeammateTagsParams = OperationListParams<"list-teammate-tags">;
+export type CreateTeammateTagParams = NonNullable<OperationParams<"create-teammate-tag">["body"]>;
 
-const queryFromAssignedConversations = (
-  q?: ListAssignedConversationsQuery,
-): Record<string, string | undefined> | undefined => {
-  if (!q) {
-    return;
-  }
-  const out: Record<string, string | undefined> = {};
-  if (q.q !== undefined) {
-    out.q = String(q.q);
-  }
-  if (q.limit !== undefined) {
-    out.limit = String(q.limit);
-  }
-  if (q.page_token !== undefined) {
-    out.page_token = String(q.page_token);
-  }
-  return out;
-};
+export type CreateTeammatePrivateInboxParams = NonNullable<
+  OperationParams<"create-teammate-private-inbox">["body"]
+>;
+export type ListTeammateTimeOffsParams = OperationListParams<"list-teammate-time-offs">;
+export type CreateTimeOffParams = NonNullable<OperationParams<"create-time-off">["body"]>;
 
-const mergeTeammateSnapshot = (
-  current: TeammateResponse,
-  patch: Partial<UpdateTeammate>,
-): TeammateResponse => {
-  const filtered = Object.fromEntries(
-    Object.entries(patch).filter(([, value]) => value !== undefined),
-  ) as Partial<TeammateResponse>;
-  return { ...current, ...filtered };
-};
+/** Collection operations returning Front response data. */
+export class FrontTeammates {
+  private readonly base: FrontBase;
 
-const teammateResponseToUpdateBody = (state: TeammateResponse): UpdateTeammate => ({
-  custom_fields: state.custom_fields,
-  first_name: state.first_name,
-  is_available: state.is_available,
-  last_name: state.last_name,
-  username: state.username,
-});
+  constructor(base: FrontBase) {
+    this.base = base;
+  }
 
-/**
- * One teammate (`/teammates/{teammate_id}`).
- *
- * Writable camelCase: `username`, `firstName`, `lastName`, `isAvailable`, `customFields`, `links`.
- * Read-only: `id`, `email`, `isAdmin`, `isBlocked`, `type`. Raw JSON: {@link FrontResource.data}.
- *
- * `PATCH` returns `204`; {@link update} and {@link save} merge the request into local state.
- *
- * @see https://dev.frontapp.com/reference/teammates
- */
-export class FrontTeammates extends FrontResource<TeammateResponse, UpdateTeammate> {
-  protected selfPath(): string {
-    return FrontBase.expandPath("/teammates/{teammate_id}", {
-      teammate_id: this.id,
+  /** GET /teammates
+   * Required scope: `teammates:read`
+   * @see https://dev.frontapp.com/reference/list-teammates
+   */
+  async list(): Promise<OperationResponse<"list-teammates">> {
+    return await this.base.requestOperation("list-teammates");
+  }
+
+  /** GET /teammates/{teammate_id}
+   * Required scope: `teammates:read`
+   * @see https://dev.frontapp.com/reference/get-teammate
+   */
+  async get(teammateId: string): Promise<OperationResponse<"get-teammate">> {
+    return await this.base.requestOperation("get-teammate", { path: { teammate_id: teammateId } });
+  }
+
+  /** PATCH /teammates/{teammate_id}
+   * Required scope: `teammates:write`
+   * @see https://dev.frontapp.com/reference/update-teammate
+   */
+  async update(
+    teammateId: string,
+    body: UpdateTeammateParams,
+  ): Promise<OperationResponse<"update-teammate">> {
+    return await this.base.requestOperation("update-teammate", {
+      body,
+      path: { teammate_id: teammateId },
     });
   }
 
-  get email(): string {
-    return this.pick("email");
-  }
-
-  get username(): string {
-    return this.pick("username");
-  }
-
-  set username(value: string) {
-    this.assign("username", value);
-  }
-
-  get firstName(): string {
-    return this.pick("first_name");
-  }
-
-  set firstName(value: string) {
-    this.assign("first_name", value);
-  }
-
-  get lastName(): string {
-    return this.pick("last_name");
-  }
-
-  set lastName(value: string) {
-    this.assign("last_name", value);
-  }
-
-  get isAdmin(): boolean {
-    return this.pick("is_admin");
-  }
-
-  get isAvailable(): boolean {
-    return this.pick("is_available");
-  }
-
-  set isAvailable(value: boolean) {
-    this.assign("is_available", value);
-  }
-
-  get isBlocked(): boolean {
-    return this.pick("is_blocked");
-  }
-
-  get type(): TeammateResponse["type"] {
-    return this.pick("type");
-  }
-
-  get customFields(): TeammateResponse["custom_fields"] {
-    return this.pick("custom_fields");
-  }
-
-  set customFields(value: TeammateResponse["custom_fields"]) {
-    this.assign("custom_fields", value);
-  }
-
-  /**
-   * Build the `PATCH` body implied by the current property values (username, names, availability, custom fields).
-   * @see https://dev.frontapp.com/reference/update-teammate
+  /** GET /teammates/custom_fields
+   * Required scope: `custom_fields:read`
+   * @see https://dev.frontapp.com/reference/list-teammate-custom-fields
    */
-  toUpdateBody(): UpdateTeammate {
-    return teammateResponseToUpdateBody(this.state);
+  async listCustomFields(): Promise<OperationResponse<"list-teammate-custom-fields">> {
+    return await this.base.requestOperation("list-teammate-custom-fields");
   }
 
-  /**
-   * Update this teammate (`PATCH /teammates/{teammate_id}`). The API returns `204`; local state is merged from the body.
-   *
-   * **Required scope:** `teammates:write`
-   *
-   * @param body Fields to change (OpenAPI {@link UpdateTeammate}). Sending `custom_fields` replaces omitted keys — see API docs.
-   * @see https://dev.frontapp.com/reference/update-teammate
-   */
-  async update(body: UpdateTeammate | Partial<UpdateTeammate>): Promise<void>;
-  async update(teammateId: string, body: UpdateTeammate | Partial<UpdateTeammate>): Promise<void>;
-  async update(
-    bodyOrTeammateId: string | UpdateTeammate | Partial<UpdateTeammate>,
-    body?: UpdateTeammate | Partial<UpdateTeammate>,
-  ): Promise<void> {
-    if (typeof bodyOrTeammateId === "string") {
-      if (body === undefined) {
-        throw new Error("Updating a teammate by ID requires a request body.");
-      }
-      await this.target(bodyOrTeammateId).update(body);
-      return;
-    }
-    await this.patchNoContent(bodyOrTeammateId, mergeTeammateSnapshot);
-  }
-
-  /**
-   * List conversations assigned to this teammate (`GET /teammates/{teammate_id}/conversations`), most recently updated first.
-   *
-   * **Required scope:** `conversations:read`
-   *
-   * @param query Optional `q` ([query object](https://dev.frontapp.com/docs/query-object-q)), `limit`, and `page_token`.
+  /** GET /teammates/{teammate_id}/conversations
+   * Required scope: `conversations:read`
    * @see https://dev.frontapp.com/reference/list-assigned-conversations
    */
   async listAssignedConversations(
-    query?: ListAssignedConversationsQuery,
-  ): Promise<WithNormalizedPagination<ListAssignedConversationsResponse>>;
-  async listAssignedConversations(
     teammateId: string,
-    query?: ListAssignedConversationsQuery,
-  ): Promise<WithNormalizedPagination<ListAssignedConversationsResponse>>;
-  async listAssignedConversations(
-    queryOrTeammateId?: string | ListAssignedConversationsQuery,
-    query?: ListAssignedConversationsQuery,
-  ): Promise<WithNormalizedPagination<ListAssignedConversationsResponse>> {
-    if (typeof queryOrTeammateId === "string") {
-      return await this.target(queryOrTeammateId).listAssignedConversations(query);
-    }
-    const path = FrontBase.expandPath("/teammates/{teammate_id}/conversations", {
-      teammate_id: this.id,
+    params?: ListTeammateAssignedConversationsParams,
+  ): Promise<OperationResponse<"list-assigned-conversations">> {
+    return await this.base.requestOperation("list-assigned-conversations", {
+      nextPageUrl: params?.nextPageUrl,
+      path: { teammate_id: teammateId },
+      query: params,
     });
-    return await this.base.requestJson<WithNormalizedPagination<ListAssignedConversationsResponse>>(
-      "GET",
-      path,
-      {
-        query: queryFromAssignedConversations(queryOrTeammateId),
-      },
-    );
-  }
-  /**
-   * Company teammates (`GET /teammates`, `GET /teammates/{teammate_id}`).
-   *
-   * @see https://dev.frontapp.com/reference/teammates
-   */
-  /**
-   * List teammates in the company (`GET /teammates`).
-   *
-   * **Required scope:** `teammates:read`
-   *
-   * @see https://dev.frontapp.com/reference/list-teammates
-   */
-  async list(): Promise<WithNormalizedPagination<ListTeammatesResponse>> {
-    return await this.base.requestJson<WithNormalizedPagination<ListTeammatesResponse>>(
-      "GET",
-      "/teammates",
-    );
   }
 
-  /**
-   * Fetch one teammate (`GET /teammates/{teammate_id}`).
-   *
-   * **Required scope:** `teammates:read`
-   *
-   * @param teammateId Teammate id or supported [resource alias](https://dev.frontapp.com/docs/resource-aliases-1).
-   * @see https://dev.frontapp.com/reference/get-teammate
+  /** GET /teammates/{teammate_id}/channels
+   * Required scope: `channels:read`
+   * @see https://dev.frontapp.com/reference/list-teammate-channels
    */
-  async get(teammateId: string): Promise<FrontTeammates> {
-    const teammate = this.target(teammateId);
-    await teammate.refresh();
-    return teammate;
+  async listChannels(teammateId: string): Promise<OperationResponse<"list-teammate-channels">> {
+    return await this.base.requestOperation("list-teammate-channels", {
+      path: { teammate_id: teammateId },
+    });
   }
 
-  /** Target a teammate by id without calling the API first. */
-  private target(teammateId: string): FrontTeammates {
-    return new FrontTeammates(this.base, undefined, teammateId);
+  /** GET /teammates/{teammate_id}/contact_lists
+   * Required scope: `contacts:read`
+   * @see https://dev.frontapp.com/reference/list-teammate-contact-lists
+   */
+  async listContactLists(
+    teammateId: string,
+  ): Promise<OperationResponse<"list-teammate-contact-lists">> {
+    return await this.base.requestOperation("list-teammate-contact-lists", {
+      path: { teammate_id: teammateId },
+    });
+  }
+
+  /** POST /teammates/{teammate_id}/contact_lists
+   * Required scope: `contacts:write`
+   * @see https://dev.frontapp.com/reference/create-teammate-contact-list
+   */
+  async createContactList(
+    teammateId: string,
+    body: CreateTeammateContactListParams,
+  ): Promise<OperationResponse<"create-teammate-contact-list">> {
+    return await this.base.requestOperation("create-teammate-contact-list", {
+      body,
+      path: { teammate_id: teammateId },
+    });
+  }
+
+  /** GET /teammates/{teammate_id}/contacts
+   * Required scope: `contacts:read`
+   * @see https://dev.frontapp.com/reference/list-teammate-contacts
+   */
+  async listContacts(
+    teammateId: string,
+    params?: ListTeammateContactsParams,
+  ): Promise<OperationResponse<"list-teammate-contacts">> {
+    return await this.base.requestOperation("list-teammate-contacts", {
+      nextPageUrl: params?.nextPageUrl,
+      path: { teammate_id: teammateId },
+      query: params,
+    });
+  }
+
+  /** POST /teammates/{teammate_id}/contacts
+   * Required scope: `contacts:write`
+   * @see https://dev.frontapp.com/reference/create-teammate-contact
+   */
+  async createContact(
+    teammateId: string,
+    body: CreateTeammateContactParams,
+  ): Promise<OperationResponse<"create-teammate-contact">> {
+    return await this.base.requestOperation("create-teammate-contact", {
+      body,
+      path: { teammate_id: teammateId },
+    });
+  }
+
+  /** GET /teammates/{teammate_id}/message_template_folders
+   * Required scope: `message_templates:read`
+   * @see https://dev.frontapp.com/reference/list-teammate-folders
+   */
+  async listMessageTemplateFolders(
+    teammateId: string,
+    params?: ListTeammateMessageTemplateFoldersParams,
+  ): Promise<OperationResponse<"list-teammate-folders">> {
+    return await this.base.requestOperation("list-teammate-folders", {
+      path: { teammate_id: teammateId },
+      query: params,
+    });
+  }
+
+  /** POST /teammates/{teammate_id}/message_template_folders
+   * Required scope: `message_templates:write`
+   * @see https://dev.frontapp.com/reference/create-teammate-folder
+   */
+  async createMessageTemplateFolder(
+    teammateId: string,
+    body: CreateTeammateMessageTemplateFolderParams,
+  ): Promise<OperationResponse<"create-teammate-folder">> {
+    return await this.base.requestOperation("create-teammate-folder", {
+      body,
+      path: { teammate_id: teammateId },
+    });
+  }
+
+  /** GET /teammates/{teammate_id}/message_templates
+   * Required scope: `message_templates:read`
+   * @see https://dev.frontapp.com/reference/list-teammate-message-templates
+   */
+  async listMessageTemplates(
+    teammateId: string,
+    params?: ListTeammateMessageTemplatesParams,
+  ): Promise<OperationResponse<"list-teammate-message-templates">> {
+    return await this.base.requestOperation("list-teammate-message-templates", {
+      path: { teammate_id: teammateId },
+      query: params,
+    });
+  }
+
+  /** POST /teammates/{teammate_id}/message_templates
+   * Required scope: `message_templates:write`
+   * @see https://dev.frontapp.com/reference/create-teammate-message-template
+   */
+  async createMessageTemplate(
+    teammateId: string,
+    body: CreateTeammateMessageTemplateParams,
+  ): Promise<OperationResponse<"create-teammate-message-template">> {
+    return await this.base.requestOperation("create-teammate-message-template", {
+      body,
+      path: { teammate_id: teammateId },
+    });
+  }
+
+  /** GET /teammates/{teammate_id}/rules
+   * Required scope: `rules:read`
+   * @see https://dev.frontapp.com/reference/list-teammate-rules
+   */
+  async listRules(teammateId: string): Promise<OperationResponse<"list-teammate-rules">> {
+    return await this.base.requestOperation("list-teammate-rules", {
+      path: { teammate_id: teammateId },
+    });
+  }
+
+  /** GET /teammates/{teammate_id}/shifts
+   * Required scope: `shifts:read`
+   * @see https://dev.frontapp.com/reference/list-teammate-shifts
+   */
+  async listShifts(teammateId: string): Promise<OperationResponse<"list-teammate-shifts">> {
+    return await this.base.requestOperation("list-teammate-shifts", {
+      path: { teammate_id: teammateId },
+    });
+  }
+
+  /** GET /teammates/{teammate_id}/signatures
+   * Required scope: `signatures:read`
+   * @see https://dev.frontapp.com/reference/list-teammate-signatures
+   */
+  async listSignatures(teammateId: string): Promise<OperationResponse<"list-teammate-signatures">> {
+    return await this.base.requestOperation("list-teammate-signatures", {
+      path: { teammate_id: teammateId },
+    });
+  }
+
+  /** POST /teammates/{teammate_id}/signatures
+   * Required scope: `signatures:write`
+   * @see https://dev.frontapp.com/reference/create-teammate-signature
+   */
+  async createSignature(
+    teammateId: string,
+    body: CreateTeammateSignatureParams,
+  ): Promise<OperationResponse<"create-teammate-signature">> {
+    return await this.base.requestOperation("create-teammate-signature", {
+      body,
+      path: { teammate_id: teammateId },
+    });
+  }
+
+  /** GET /teammates/{teammate_id}/tags
+   * Required scope: `tags:read`
+   * @see https://dev.frontapp.com/reference/list-teammate-tags
+   */
+  async listTags(
+    teammateId: string,
+    params?: ListTeammateTagsParams,
+  ): Promise<OperationResponse<"list-teammate-tags">> {
+    return await this.base.requestOperation("list-teammate-tags", {
+      nextPageUrl: params?.nextPageUrl,
+      path: { teammate_id: teammateId },
+      query: params,
+    });
+  }
+
+  /** POST /teammates/{teammate_id}/tags
+   * Required scope: `tags:write`
+   * @see https://dev.frontapp.com/reference/create-teammate-tag
+   */
+  async createTag(
+    teammateId: string,
+    body: CreateTeammateTagParams,
+  ): Promise<OperationResponse<"create-teammate-tag">> {
+    return await this.base.requestOperation("create-teammate-tag", {
+      body,
+      path: { teammate_id: teammateId },
+    });
+  }
+  /** GET /teammates/{teammate_id}/private_inboxes
+   * Required scope: `inboxes:read`
+   * @see https://dev.frontapp.com/reference/list-teammate-private-inboxes
+   */
+  async listPrivateInboxes(
+    teammateId: string,
+  ): Promise<OperationResponse<"list-teammate-private-inboxes">> {
+    return await this.base.requestOperation("list-teammate-private-inboxes", {
+      path: { teammate_id: teammateId },
+    });
+  }
+
+  /** POST /teammates/{teammate_id}/private_inboxes
+   * Required scope: `inboxes:write`
+   * @see https://dev.frontapp.com/reference/create-teammate-private-inbox
+   */
+  async createPrivateInbox(
+    teammateId: string,
+    body: CreateTeammatePrivateInboxParams,
+  ): Promise<OperationResponse<"create-teammate-private-inbox">> {
+    return await this.base.requestOperation("create-teammate-private-inbox", {
+      body,
+      path: { teammate_id: teammateId },
+    });
+  }
+
+  /** GET /teammates/{teammate_id}/time_offs
+   * Required scope: `time_off:read`
+   * @see https://dev.frontapp.com/reference/list-teammate-time-offs
+   */
+  async listTimeOffs(
+    teammateId: string,
+    params?: ListTeammateTimeOffsParams,
+  ): Promise<OperationResponse<"list-teammate-time-offs">> {
+    return await this.base.requestOperation("list-teammate-time-offs", {
+      nextPageUrl: params?.nextPageUrl,
+      path: { teammate_id: teammateId },
+      query: params,
+    });
+  }
+
+  /** POST /teammates/{teammate_id}/time_offs
+   * Required scope: `time_off:write`
+   * @see https://dev.frontapp.com/reference/create-time-off
+   */
+  async createTimeOff(
+    teammateId: string,
+    body: CreateTimeOffParams,
+  ): Promise<OperationResponse<"create-time-off">> {
+    return await this.base.requestOperation("create-time-off", {
+      body,
+      path: { teammate_id: teammateId },
+    });
   }
 }

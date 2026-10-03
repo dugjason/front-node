@@ -9,7 +9,6 @@ describe("Front namespaces (smoke)", () => {
       front.contactLists.list(),
       front.contacts.list(),
       front.conversations.list(),
-      front.customFieldsGlobal.list(),
       front.events.list(),
       front.inboxes.list(),
       front.knowledgeBases.list(),
@@ -24,7 +23,7 @@ describe("Front namespaces (smoke)", () => {
     ]);
 
     const urls = requests.map((r) => r.url).toSorted();
-    expect(requests).toHaveLength(15);
+    expect(requests).toHaveLength(14);
     expect(requests.every((r) => r.method === "GET")).toBe(true);
     expect(requests.every((r) => r.headers.get("Authorization") === "Bearer test-token")).toBe(
       true,
@@ -34,7 +33,6 @@ describe("Front namespaces (smoke)", () => {
         "https://api2.frontapp.com/contact_lists",
         "https://api2.frontapp.com/contacts",
         "https://api2.frontapp.com/conversations",
-        "https://api2.frontapp.com/custom_fields",
         "https://api2.frontapp.com/events",
         "https://api2.frontapp.com/inboxes",
         "https://api2.frontapp.com/knowledge_bases",

@@ -1,30 +1,29 @@
-import { FrontBase } from "../base";
-import type { components } from "../gen/schema.gen";
+import type { FrontBase } from "../base";
+import type { OperationParams, OperationResponse } from "../operation";
 
-export type AppEvent = components["schemas"]["AppEvent"];
+export type TriggerApplicationEventParams = NonNullable<
+  OperationParams<"trigger-app-event">["body"]
+>;
 
-/**
- * Application trigger API (`POST /applications/{application_uid}/events`).
- *
- * @see https://dev.frontapp.com/docs/application-triggers#/
- */
+/** Collection operations returning Front response data. */
 export class FrontApplications {
   private readonly base: FrontBase;
 
-  /** @param base Shared HTTP client (in practice the `Front` instance). */
   constructor(base: FrontBase) {
     this.base = base;
   }
 
-  /**
-   * Trigger an application event (`POST /applications/{application_uid}/events`). Returns `204` with no body.
-   *
-   * **Required scope:** `feature:app_trigger`
+  /** POST /applications/{application_uid}/events
+   * Required scope: `feature:app_trigger`
+   * @see https://dev.frontapp.com/reference/trigger-app-event
    */
-  async triggerEvent(applicationUid: string, body: AppEvent): Promise<void> {
-    const path = FrontBase.expandPath("/applications/{application_uid}/events", {
-      application_uid: applicationUid,
+  async triggerEvent(
+    applicationUid: string,
+    body: TriggerApplicationEventParams,
+  ): Promise<OperationResponse<"trigger-app-event">> {
+    return await this.base.requestOperation("trigger-app-event", {
+      body,
+      path: { application_uid: applicationUid },
     });
-    await this.base.requestJson<undefined>("POST", path, { body });
   }
 }

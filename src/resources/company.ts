@@ -1,5 +1,4 @@
-import { FrontBase } from "../base";
-import type { NextPageParams } from "../base";
+import type { FrontBase, NextPageParams } from "../base";
 import type { components, operations } from "../gen/schema.gen";
 import type { PaginationInfo, WithNormalizedPagination } from "../normalize-response";
 import type { TagResponse } from "./tags";
@@ -25,28 +24,6 @@ type ListCompanyTagsResponse =
     pagination?: PaginationInfo;
   };
 
-const queryFromListCompanyTags = (
-  q?: ListCompanyTagsParams,
-): Record<string, string | undefined> | undefined => {
-  if (!q) {
-    return;
-  }
-  const out: Record<string, string | undefined> = {};
-  if (q.limit !== undefined) {
-    out.limit = String(q.limit);
-  }
-  if (q.page_token !== undefined) {
-    out.page_token = String(q.page_token);
-  }
-  if (q.sort_by !== undefined) {
-    out.sort_by = String(q.sort_by);
-  }
-  if (q.sort_order !== undefined) {
-    out.sort_order = String(q.sort_order);
-  }
-  return out;
-};
-
 /**
  * Company-scoped rules, ticket statuses, and tags (`/company/rules`, `/company/statuses`, `/company/tags`).
  *
@@ -66,10 +43,7 @@ export class FrontCompany {
    * **Required scope:** `rules:read`
    */
   async listRules(): Promise<WithNormalizedPagination<ListCompanyRulesResponse>> {
-    return await this.base.requestJson<WithNormalizedPagination<ListCompanyRulesResponse>>(
-      "GET",
-      "/company/rules",
-    );
+    return await this.base.requestOperation("list-all-company-rules");
   }
 
   /**
@@ -78,10 +52,7 @@ export class FrontCompany {
    * **Required scope:** `statuses:read`
    */
   async listTicketStatuses(): Promise<WithNormalizedPagination<ListCompanyTicketStatusesResponse>> {
-    return await this.base.requestJson<WithNormalizedPagination<ListCompanyTicketStatusesResponse>>(
-      "GET",
-      "/company/statuses",
-    );
+    return await this.base.requestOperation("list-company-ticket-statuses");
   }
 
   /**
@@ -90,10 +61,9 @@ export class FrontCompany {
    * **Required scope:** `statuses:read`
    */
   async getTicketStatus(statusId: string): Promise<StatusResponse> {
-    const path = FrontBase.expandPath("/company/statuses/{status_id}", {
-      status_id: statusId,
+    return await this.base.requestOperation("get-ticket-status-by-id", {
+      path: { status_id: statusId },
     });
-    return await this.base.requestJson<StatusResponse>("GET", path);
   }
 
   /**
@@ -104,16 +74,10 @@ export class FrontCompany {
   async listTags(
     query?: ListCompanyTagsParams,
   ): Promise<WithNormalizedPagination<ListCompanyTagsResponse>> {
-    return await this.base.requestJson<WithNormalizedPagination<ListCompanyTagsResponse>>(
-      "GET",
-      "/company/tags",
-      {
-        query:
-          query?.nextPageUrl === undefined
-            ? queryFromListCompanyTags(query)
-            : FrontBase.queryFromNextPageUrl(query.nextPageUrl, "/company/tags"),
-      },
-    );
+    return await this.base.requestOperation("list-company-tags", {
+      nextPageUrl: query?.nextPageUrl,
+      query,
+    });
   }
 
   /**
@@ -122,6 +86,6 @@ export class FrontCompany {
    * **Required scope:** `tags:write`
    */
   async createTag(body: CreateCompanyTagParams): Promise<TagResponse> {
-    return await this.base.requestJson<TagResponse>("POST", "/company/tags", { body });
+    return await this.base.requestOperation("create-company-tag", { body });
   }
 }

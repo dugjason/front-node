@@ -1,12 +1,6 @@
-import { FrontBase } from "../base";
+import type { FrontBase } from "../base";
 
-/**
- * Attachment download by link id (`GET /download/{attachment_link_id}`).
- *
- * **Required scope:** `attachments:read`
- *
- * @see https://dev.frontapp.com/reference/download-attachment
- */
+/** Collection operations returning Front response data. */
 export class FrontDownloads {
   private readonly base: FrontBase;
 
@@ -14,15 +8,13 @@ export class FrontDownloads {
     this.base = base;
   }
 
-  /**
-   * Download an attachment (`GET /download/{attachment_link_id}`). Returns the raw `Response` (binary body not parsed as JSON).
-   *
-   * **Required scope:** `attachments:read`
+  /** GET /download/{attachment_link_id}
+   * Required scope: `attachments:read`
+   * @see https://dev.frontapp.com/reference/download-attachment
    */
   async download(attachmentLinkId: string): Promise<Response> {
-    const path = FrontBase.expandPath("/download/{attachment_link_id}", {
-      attachment_link_id: attachmentLinkId,
+    return await this.base.requestOperationRaw("download-attachment", {
+      path: { attachment_link_id: attachmentLinkId },
     });
-    return await this.base.requestWithoutParsingBody("GET", path);
   }
 }

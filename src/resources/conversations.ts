@@ -1,939 +1,392 @@
-import { FrontBase } from "../base";
-import type { components, operations } from "../gen/schema.gen";
-import type { WithNormalizedPagination } from "../normalize-response";
-import { FrontResource } from "../resource";
-import type { CreateComment } from "./comments";
-import { FrontComments } from "./comments";
+import type { FrontBase } from "../base";
+import type { OperationParams, OperationListParams, OperationResponse } from "../operation";
+import type { components } from "../gen/schema.gen";
 
 export type ConversationResponse = components["schemas"]["ConversationResponse"];
-export type UpdateConversation = components["schemas"]["UpdateConversation"];
-export type CreateConversation = components["schemas"]["CreateConversation"];
-export type ReplyDraft = components["schemas"]["ReplyDraft"];
-export type OutboundReplyMessage = components["schemas"]["OutboundReplyMessage"];
-export type UpdateConversationReminders = components["schemas"]["UpdateConversationReminders"];
-export type TagIds = components["schemas"]["TagIds"];
 
-type MessageResponse = components["schemas"]["MessageResponse"];
-
-type ListConversationsResponse =
-  operations["list-conversations"]["responses"][200]["content"]["application/json"];
-type ListConversationCustomFieldsResponse =
-  operations["list-conversation-custom-fields"]["responses"][200]["content"]["application/json"];
-type SearchConversationsResponse =
-  operations["search-conversations"]["responses"][200]["content"]["application/json"];
-type ListConversationCommentsResponse =
-  operations["list-conversation-comments"]["responses"][200]["content"]["application/json"];
-type ListConversationDraftsResponse =
-  operations["list-conversation-drafts"]["responses"][200]["content"]["application/json"];
-type ListConversationEventsResponse =
-  operations["list-conversation-events"]["responses"][200]["content"]["application/json"];
-type ListConversationFollowersResponse =
-  operations["list-conversation-followers"]["responses"][200]["content"]["application/json"];
-type ListConversationInboxesResponse =
-  operations["list-conversation-inboxes"]["responses"][200]["content"]["application/json"];
-type ListConversationMessagesResponse =
-  operations["list-conversation-messages"]["responses"][200]["content"]["application/json"];
-
-type AcceptedMessageReply =
-  operations["create-message-reply"]["responses"][202]["content"]["application/json"];
-
-type ListConversationsQuery = NonNullable<operations["list-conversations"]["parameters"]["query"]>;
-type SearchConversationsQuery = NonNullable<
-  operations["search-conversations"]["parameters"]["query"]
+export type ListConversationsParams = OperationListParams<"list-conversations">;
+export type CreateConversationParams = NonNullable<OperationParams<"create-conversation">["body"]>;
+export type UpdateConversationParams = NonNullable<OperationParams<"update-conversation">["body"]>;
+export type SearchConversationParams = OperationListParams<"search-conversations">;
+export type UpdateConversationAssigneeParams = NonNullable<
+  OperationParams<"update-conversation-assignee">["body"]
 >;
-type ListConversationEventsQuery = NonNullable<
-  operations["list-conversation-events"]["parameters"]["query"]
+export type AddConversationCommentParams = NonNullable<OperationParams<"add-comment">["body"]>;
+export type CreateConversationDraftReplyParams = NonNullable<
+  OperationParams<"create-draft-reply">["body"]
 >;
-export type ListConversationMessagesQuery = NonNullable<
-  operations["list-conversation-messages"]["parameters"]["query"]
+export type ListConversationEventsParams = OperationListParams<"list-conversation-events">;
+export type AddConversationFollowersParams = NonNullable<
+  OperationParams<"add-conversation-followers">["body"]
+>;
+export type AddConversationFollowersQueryParams = OperationListParams<"add-conversation-followers">;
+export type DeleteConversationFollowersParams = NonNullable<
+  OperationParams<"delete-conversation-followers">["body"]
+>;
+export type AddConversationLinkParams = NonNullable<
+  OperationParams<"add-conversation-link">["body"]
+>;
+export type RemoveConversationLinksParams = NonNullable<
+  OperationParams<"remove-conversation-links">["body"]
+>;
+export type ListConversationMessagesParams = OperationListParams<"list-conversation-messages">;
+export type CreateConversationMessageReplyParams = NonNullable<
+  OperationParams<"create-message-reply">["body"]
+>;
+export type UpdateConversationRemindersParams = NonNullable<
+  OperationParams<"update-conversation-reminders">["body"]
+>;
+export type AddConversationTagParams = NonNullable<OperationParams<"add-conversation-tag">["body"]>;
+export type RemoveConversationTagParams = NonNullable<
+  OperationParams<"remove-conversation-tag">["body"]
 >;
 
-type AddConversationFollowersQuery = NonNullable<
-  operations["add-conversation-followers"]["parameters"]["query"]
->;
-type AddConversationFollowersBody = NonNullable<
-  NonNullable<
-    operations["add-conversation-followers"]["requestBody"]
-  >["content"]["application/json"]
->;
-type DeleteConversationFollowersBody = NonNullable<
-  NonNullable<
-    operations["delete-conversation-followers"]["requestBody"]
-  >["content"]["application/json"]
->;
-type AddConversationLinkBody = NonNullable<
-  NonNullable<operations["add-conversation-link"]["requestBody"]>["content"]["application/json"]
->;
-type RemoveConversationLinksBody = NonNullable<
-  NonNullable<operations["remove-conversation-links"]["requestBody"]>["content"]["application/json"]
+export type ListLinkedConversationsParams = OperationListParams<"list-linked-conversations">;
+export type CreateLinkedConversationsParams = NonNullable<
+  OperationParams<"create-linked-conversations">["body"]
 >;
 
-const queryFromListConversations = (
-  q?: ListConversationsQuery,
-): Record<string, string | undefined> | undefined => {
-  if (!q) {
-    return;
-  }
-  const out: Record<string, string | undefined> = {};
-  if (q.q !== undefined) {
-    out.q = String(q.q);
-  }
-  if (q.limit !== undefined) {
-    out.limit = String(q.limit);
-  }
-  if (q.page_token !== undefined) {
-    out.page_token = String(q.page_token);
-  }
-  if (q.sort_by !== undefined) {
-    out.sort_by = String(q.sort_by);
-  }
-  if (q.sort_order !== undefined) {
-    out.sort_order = String(q.sort_order);
-  }
-  return out;
-};
+/** Collection operations returning Front response data. */
+export class FrontConversations {
+  private readonly base: FrontBase;
 
-const queryFromSearchConversations = (
-  q?: SearchConversationsQuery,
-): Record<string, string | undefined> | undefined => {
-  if (!q) {
-    return;
-  }
-  const out: Record<string, string | undefined> = {};
-  if (q.limit !== undefined) {
-    out.limit = String(q.limit);
-  }
-  if (q.page_token !== undefined) {
-    out.page_token = String(q.page_token);
-  }
-  return out;
-};
-
-const queryFromListConversationEvents = (
-  q?: ListConversationEventsQuery,
-): Record<string, string | undefined> | undefined => {
-  if (!q) {
-    return;
-  }
-  const out: Record<string, string | undefined> = {};
-  if (q.limit !== undefined) {
-    out.limit = String(q.limit);
-  }
-  if (q.page_token !== undefined) {
-    out.page_token = String(q.page_token);
-  }
-  return out;
-};
-
-const queryFromListConversationMessages = (
-  q?: ListConversationMessagesQuery,
-): Record<string, string | undefined> | undefined => {
-  if (!q) {
-    return;
-  }
-  const out: Record<string, string | undefined> = {};
-  if (q.limit !== undefined) {
-    out.limit = String(q.limit);
-  }
-  if (q.page_token !== undefined) {
-    out.page_token = String(q.page_token);
-  }
-  if (q.sort_by !== undefined) {
-    out.sort_by = String(q.sort_by);
-  }
-  if (q.sort_order !== undefined) {
-    out.sort_order = String(q.sort_order);
-  }
-  return out;
-};
-
-const requestListConversationMessages = (
-  base: FrontBase,
-  conversationId: string,
-  query?: ListConversationMessagesQuery,
-): Promise<WithNormalizedPagination<ListConversationMessagesResponse>> => {
-  const path = FrontBase.expandPath("/conversations/{conversation_id}/messages", {
-    conversation_id: conversationId,
-  });
-  return base.requestJson<WithNormalizedPagination<ListConversationMessagesResponse>>("GET", path, {
-    query: queryFromListConversationMessages(query),
-  });
-};
-
-const queryFromAddConversationFollowers = (
-  q?: AddConversationFollowersQuery,
-): Record<string, string | undefined> | undefined => {
-  if (!q) {
-    return;
-  }
-  const out: Record<string, string | undefined> = {};
-  if (q.ignore_errors !== undefined) {
-    out.ignore_errors = q.ignore_errors ? "true" : "false";
-  }
-  return out;
-};
-
-const updateStatusToConversationStatus = (
-  status: NonNullable<UpdateConversation["status"]>,
-): ConversationResponse["status"] => {
-  switch (status) {
-    case "archived": {
-      return "archived";
-    }
-    case "deleted": {
-      return "deleted";
-    }
-    case "open": {
-      return "unassigned";
-    }
-    case "spam": {
-      return "deleted";
-    }
-    default: {
-      const _exhaustive: never = status;
-      return _exhaustive;
-    }
-  }
-};
-
-const conversationStatusToUpdateStatus = (
-  status: ConversationResponse["status"],
-): UpdateConversation["status"] | undefined => {
-  if (status === "archived") {
-    return "archived";
-  }
-  if (status === "deleted") {
-    return "deleted";
-  }
-  if (status === "unassigned") {
-    return "open";
-  }
-};
-
-const mergeConversationSnapshot = (
-  current: ConversationResponse,
-  patch: Partial<UpdateConversation>,
-): ConversationResponse => {
-  const filtered = Object.fromEntries(
-    Object.entries(patch).filter(([, value]) => value !== undefined),
-  ) as Partial<UpdateConversation>;
-
-  let next: ConversationResponse = { ...current };
-
-  if (filtered.status !== undefined) {
-    next = {
-      ...next,
-      status: updateStatusToConversationStatus(filtered.status),
-    };
-  }
-  if (filtered.status_id !== undefined) {
-    next = { ...next, status_id: filtered.status_id };
-  }
-  if (filtered.custom_fields !== undefined) {
-    next = { ...next, custom_fields: filtered.custom_fields };
-  }
-  if (filtered.tag_ids !== undefined) {
-    const idSet = new Set(filtered.tag_ids);
-    next = {
-      ...next,
-      tags: next.tags.filter((tag) => idSet.has(tag.id)),
-    };
+  constructor(base: FrontBase) {
+    this.base = base;
   }
 
-  const assigneePatch = filtered.assignee_id as string | null | undefined;
-  if (assigneePatch !== undefined) {
-    next = {
-      ...next,
-      assignee: {
-        ...next.assignee,
-        id: assigneePatch === null ? "" : assigneePatch,
-      },
-    };
-  }
-
-  return next;
-};
-
-const conversationResponseToUpdateBody = (state: ConversationResponse): UpdateConversation => {
-  const status = conversationStatusToUpdateStatus(state.status);
-  return {
-    assignee_id: state.assignee.id === "" ? undefined : state.assignee.id,
-    custom_fields: state.custom_fields,
-    tag_ids: state.tags.map((t) => t.id),
-    ...(status === undefined ? {} : { status }),
-    ...(state.status_id === undefined ? {} : { status_id: state.status_id }),
-  };
-};
-
-/**
- * One conversation (`/conversations/{conversation_id}` and nested routes).
- *
- * Writable fields for {@link save} map from {@link ConversationResponse} into {@link UpdateConversation}
- * (assignee, status, status id, tags, custom fields). `PATCH` returns `204`; {@link update} merges the
- * request into local state for supported fields — call {@link refresh} when you need an authoritative snapshot.
- *
- * @see https://dev.frontapp.com/reference/conversations
- */
-export class FrontConversations extends FrontResource<ConversationResponse, UpdateConversation> {
-  protected selfPath(): string {
-    return FrontBase.expandPath("/conversations/{conversation_id}", {
-      conversation_id: this.id,
-    });
-  }
-
-  get subject(): string {
-    return this.pick("subject");
-  }
-
-  get status(): ConversationResponse["status"] {
-    return this.pick("status");
-  }
-
-  get statusId(): string | undefined {
-    return this.pick("status_id");
-  }
-
-  get statusCategory(): ConversationResponse["status_category"] {
-    return this.pick("status_category");
-  }
-
-  get ticketIds(): ConversationResponse["ticket_ids"] {
-    return this.pick("ticket_ids");
-  }
-
-  get assignee(): ConversationResponse["assignee"] {
-    return this.pick("assignee");
-  }
-
-  get recipient(): ConversationResponse["recipient"] {
-    return this.pick("recipient");
-  }
-
-  get tags(): ConversationResponse["tags"] {
-    return this.pick("tags");
-  }
-
-  /**
-   * Links attached to this conversation (API field `links`). HAL `_links` for the resource is {@link FrontResource.links}.
-   */
-  get conversationLinks(): ConversationResponse["links"] {
-    return this.pick("links");
-  }
-
-  get customFields(): ConversationResponse["custom_fields"] {
-    return this.pick("custom_fields");
-  }
-
-  get createdAt(): number | undefined {
-    return this.pick("created_at");
-  }
-
-  get updatedAt(): number | undefined {
-    return this.pick("updated_at");
-  }
-
-  get waitingSince(): number | undefined {
-    return this.pick("waiting_since");
-  }
-
-  get isPrivate(): boolean {
-    return this.pick("is_private");
-  }
-
-  get scheduledReminders(): ConversationResponse["scheduled_reminders"] {
-    return this.pick("scheduled_reminders");
-  }
-
-  get metadata(): ConversationResponse["metadata"] {
-    return this.pick("metadata");
-  }
-
-  toUpdateBody(): UpdateConversation {
-    return conversationResponseToUpdateBody(this.state);
-  }
-
-  /**
-   * Update this conversation (`PATCH /conversations/{conversation_id}`). The API returns `204`; local state
-   * is merged from the body for supported fields.
-   *
-   * **Required scope:** `conversations:write`
-   *
-   * @see https://dev.frontapp.com/reference/update-conversation
-   */
-  async update(body: UpdateConversation | Partial<UpdateConversation>): Promise<void>;
-  async update(
-    conversationId: string,
-    body: UpdateConversation | Partial<UpdateConversation>,
-  ): Promise<void>;
-  async update(
-    bodyOrConversationId: string | UpdateConversation | Partial<UpdateConversation>,
-    body?: UpdateConversation | Partial<UpdateConversation>,
-  ): Promise<void> {
-    if (typeof bodyOrConversationId === "string") {
-      if (body === undefined) {
-        throw new Error("Updating a conversation by ID requires a request body.");
-      }
-      await this.target(bodyOrConversationId).update(body);
-      return;
-    }
-    await this.patchNoContent(bodyOrConversationId, mergeConversationSnapshot);
-  }
-
-  /**
-   * Permanently delete this conversation (`DELETE /conversations/{conversation_id}`). The conversation must be in
-   * the trashed state.
-   *
-   * **Required scope:** `conversations:delete`
-   *
-   * @see https://dev.frontapp.com/reference/delete-conversation
-   */
-  override async delete(conversationId?: string): Promise<void> {
-    if (conversationId !== undefined) {
-      await this.target(conversationId).delete();
-      return;
-    }
-    await super.delete();
-  }
-
-  /**
-   * Assign or unassign (`PUT /conversations/{conversation_id}/assignee`). The API returns `204`.
-   * Pass `{ assignee_id: null }` to unassign (JSON `null` is accepted by the API even when the generated schema
-   * types `assignee_id` as `string`).
-   *
-   * **Required scope:** `conversations:write`
-   *
-   * @see https://dev.frontapp.com/reference/update-conversation-assignee
-   */
-  async updateAssignee(body: { assignee_id: string | null }): Promise<void>;
-  async updateAssignee(conversationId: string, body: { assignee_id: string | null }): Promise<void>;
-  async updateAssignee(
-    bodyOrConversationId: string | { assignee_id: string | null },
-    body?: { assignee_id: string | null },
-  ): Promise<void> {
-    if (typeof bodyOrConversationId === "string") {
-      if (body === undefined) {
-        throw new Error("Updating a conversation assignee by ID requires a request body.");
-      }
-      await this.target(bodyOrConversationId).updateAssignee(body);
-      return;
-    }
-    const path = FrontBase.expandPath("/conversations/{conversation_id}/assignee", {
-      conversation_id: this.id,
-    });
-    await this.base.requestJson<undefined>("PUT", path, { body: bodyOrConversationId });
-  }
-
-  /**
-   * List comments (`GET /conversations/{conversation_id}/comments`).
-   *
-   * **Required scope:** `comments:read`
-   *
-   * @see https://dev.frontapp.com/reference/list-conversation-comments
-   */
-  async listComments(
-    conversationId?: string,
-  ): Promise<WithNormalizedPagination<ListConversationCommentsResponse>> {
-    if (conversationId !== undefined) {
-      return await this.target(conversationId).listComments();
-    }
-    const path = FrontBase.expandPath("/conversations/{conversation_id}/comments", {
-      conversation_id: this.id,
-    });
-    return await this.base.requestJson<WithNormalizedPagination<ListConversationCommentsResponse>>(
-      "GET",
-      path,
-    );
-  }
-
-  /**
-   * Add a comment (`POST /conversations/{conversation_id}/comments`).
-   *
-   * **Required scope:** `comments:write`
-   *
-   * @see https://dev.frontapp.com/reference/add-comment
-   */
-  async addComment(body: CreateComment): Promise<FrontComments>;
-  async addComment(conversationId: string, body: CreateComment): Promise<FrontComments>;
-  async addComment(
-    bodyOrConversationId: string | CreateComment,
-    body?: CreateComment,
-  ): Promise<FrontComments> {
-    if (typeof bodyOrConversationId === "string") {
-      if (body === undefined) {
-        throw new Error("Adding a conversation comment by ID requires a request body.");
-      }
-      return await this.target(bodyOrConversationId).addComment(body);
-    }
-    const path = FrontBase.expandPath("/conversations/{conversation_id}/comments", {
-      conversation_id: this.id,
-    });
-    const data = await this.base.requestJson<components["schemas"]["CommentResponse"]>(
-      "POST",
-      path,
-      { body: bodyOrConversationId },
-    );
-    return new FrontComments(this.base, data);
-  }
-
-  /**
-   * List drafts (`GET /conversations/{conversation_id}/drafts`).
-   *
-   * **Required scope:** `drafts:read`
-   *
-   * @see https://dev.frontapp.com/reference/list-conversation-drafts
-   */
-  async listDrafts(
-    conversationId?: string,
-  ): Promise<WithNormalizedPagination<ListConversationDraftsResponse>> {
-    if (conversationId !== undefined) {
-      return await this.target(conversationId).listDrafts();
-    }
-    const path = FrontBase.expandPath("/conversations/{conversation_id}/drafts", {
-      conversation_id: this.id,
-    });
-    return await this.base.requestJson<WithNormalizedPagination<ListConversationDraftsResponse>>(
-      "GET",
-      path,
-    );
-  }
-
-  /**
-   * Create a draft reply to the last message (`POST /conversations/{conversation_id}/drafts`).
-   *
-   * **Required scope:** `drafts:write`
-   *
-   * @see https://dev.frontapp.com/reference/create-draft-reply
-   */
-  async createDraftReply(body: ReplyDraft): Promise<MessageResponse>;
-  async createDraftReply(conversationId: string, body: ReplyDraft): Promise<MessageResponse>;
-  async createDraftReply(
-    bodyOrConversationId: string | ReplyDraft,
-    body?: ReplyDraft,
-  ): Promise<MessageResponse> {
-    if (typeof bodyOrConversationId === "string") {
-      if (body === undefined) {
-        throw new Error("Creating a conversation draft by ID requires a request body.");
-      }
-      return await this.target(bodyOrConversationId).createDraftReply(body);
-    }
-    const path = FrontBase.expandPath("/conversations/{conversation_id}/drafts", {
-      conversation_id: this.id,
-    });
-    return await this.base.requestJson<MessageResponse>("POST", path, {
-      body: bodyOrConversationId,
-    });
-  }
-
-  /**
-   * List events (`GET /conversations/{conversation_id}/events`).
-   *
-   * **Required scope:** `events:read`
-   *
-   * @see https://dev.frontapp.com/reference/list-conversation-events
-   */
-  async listEvents(
-    query?: ListConversationEventsQuery,
-  ): Promise<WithNormalizedPagination<ListConversationEventsResponse>>;
-  async listEvents(
-    conversationId: string,
-    query?: ListConversationEventsQuery,
-  ): Promise<WithNormalizedPagination<ListConversationEventsResponse>>;
-  async listEvents(
-    queryOrConversationId?: string | ListConversationEventsQuery,
-    query?: ListConversationEventsQuery,
-  ): Promise<WithNormalizedPagination<ListConversationEventsResponse>> {
-    if (typeof queryOrConversationId === "string") {
-      return await this.target(queryOrConversationId).listEvents(query);
-    }
-    const path = FrontBase.expandPath("/conversations/{conversation_id}/events", {
-      conversation_id: this.id,
-    });
-    return await this.base.requestJson<WithNormalizedPagination<ListConversationEventsResponse>>(
-      "GET",
-      path,
-      { query: queryFromListConversationEvents(queryOrConversationId) },
-    );
-  }
-
-  /**
-   * List followers (`GET /conversations/{conversation_id}/followers`).
-   *
-   * **Required scope:** `conversations:read`
-   *
-   * @see https://dev.frontapp.com/reference/list-conversation-followers
-   */
-  async listFollowers(
-    conversationId?: string,
-  ): Promise<WithNormalizedPagination<ListConversationFollowersResponse>> {
-    if (conversationId !== undefined) {
-      return await this.target(conversationId).listFollowers();
-    }
-    const path = FrontBase.expandPath("/conversations/{conversation_id}/followers", {
-      conversation_id: this.id,
-    });
-    return await this.base.requestJson<WithNormalizedPagination<ListConversationFollowersResponse>>(
-      "GET",
-      path,
-    );
-  }
-
-  /**
-   * Add followers (`POST /conversations/{conversation_id}/followers`). The API returns `204`.
-   *
-   * **Required scope:** `conversations:write`
-   *
-   * @see https://dev.frontapp.com/reference/add-conversation-followers
-   */
-  async addFollowers(
-    body: AddConversationFollowersBody,
-    query?: AddConversationFollowersQuery,
-  ): Promise<void>;
-  async addFollowers(
-    conversationId: string,
-    body: AddConversationFollowersBody,
-    query?: AddConversationFollowersQuery,
-  ): Promise<void>;
-  async addFollowers(
-    bodyOrConversationId: string | AddConversationFollowersBody,
-    bodyOrQuery?: AddConversationFollowersBody | AddConversationFollowersQuery,
-    query?: AddConversationFollowersQuery,
-  ): Promise<void> {
-    if (typeof bodyOrConversationId === "string") {
-      if (bodyOrQuery === undefined) {
-        throw new Error("Adding conversation followers by ID requires a request body.");
-      }
-      await this.target(bodyOrConversationId).addFollowers(
-        bodyOrQuery as AddConversationFollowersBody,
-        query,
-      );
-      return;
-    }
-    const path = FrontBase.expandPath("/conversations/{conversation_id}/followers", {
-      conversation_id: this.id,
-    });
-    await this.base.requestJson<undefined>("POST", path, {
-      body: bodyOrConversationId,
-      query: queryFromAddConversationFollowers(bodyOrQuery as AddConversationFollowersQuery),
-    });
-  }
-
-  /**
-   * Remove followers (`DELETE /conversations/{conversation_id}/followers`). The API returns `204`.
-   *
-   * **Required scope:** `conversations:write`
-   *
-   * @see https://dev.frontapp.com/reference/delete-conversation-followers
-   */
-  async deleteFollowers(body: DeleteConversationFollowersBody): Promise<void>;
-  async deleteFollowers(
-    conversationId: string,
-    body: DeleteConversationFollowersBody,
-  ): Promise<void>;
-  async deleteFollowers(
-    bodyOrConversationId: string | DeleteConversationFollowersBody,
-    body?: DeleteConversationFollowersBody,
-  ): Promise<void> {
-    if (typeof bodyOrConversationId === "string") {
-      if (body === undefined) {
-        throw new Error("Removing conversation followers by ID requires a request body.");
-      }
-      await this.target(bodyOrConversationId).deleteFollowers(body);
-      return;
-    }
-    const path = FrontBase.expandPath("/conversations/{conversation_id}/followers", {
-      conversation_id: this.id,
-    });
-    await this.base.requestJson<undefined>("DELETE", path, { body: bodyOrConversationId });
-  }
-
-  /**
-   * List inboxes (`GET /conversations/{conversation_id}/inboxes`).
-   *
-   * **Required scope:** `inboxes:read`
-   *
-   * @see https://dev.frontapp.com/reference/list-conversation-inboxes
-   */
-  async listInboxes(
-    conversationId?: string,
-  ): Promise<WithNormalizedPagination<ListConversationInboxesResponse>> {
-    if (conversationId !== undefined) {
-      return await this.target(conversationId).listInboxes();
-    }
-    const path = FrontBase.expandPath("/conversations/{conversation_id}/inboxes", {
-      conversation_id: this.id,
-    });
-    return await this.base.requestJson<WithNormalizedPagination<ListConversationInboxesResponse>>(
-      "GET",
-      path,
-    );
-  }
-
-  /**
-   * Add links (`POST /conversations/{conversation_id}/links`). The API returns `204`.
-   *
-   * **Required scope:** `conversations:write`
-   *
-   * @see https://dev.frontapp.com/reference/add-conversation-link
-   */
-  async addLink(body: AddConversationLinkBody): Promise<void>;
-  async addLink(conversationId: string, body: AddConversationLinkBody): Promise<void>;
-  async addLink(
-    bodyOrConversationId: string | AddConversationLinkBody,
-    body?: AddConversationLinkBody,
-  ): Promise<void> {
-    if (typeof bodyOrConversationId === "string") {
-      if (body === undefined) {
-        throw new Error("Adding a conversation link by ID requires a request body.");
-      }
-      await this.target(bodyOrConversationId).addLink(body);
-      return;
-    }
-    const path = FrontBase.expandPath("/conversations/{conversation_id}/links", {
-      conversation_id: this.id,
-    });
-    await this.base.requestJson<undefined>("POST", path, { body: bodyOrConversationId });
-  }
-
-  /**
-   * Remove links (`DELETE /conversations/{conversation_id}/links`). The API returns `204`.
-   *
-   * **Required scope:** `conversations:write`
-   *
-   * @see https://dev.frontapp.com/reference/remove-conversation-links
-   */
-  async removeLinks(body: RemoveConversationLinksBody): Promise<void>;
-  async removeLinks(conversationId: string, body: RemoveConversationLinksBody): Promise<void>;
-  async removeLinks(
-    bodyOrConversationId: string | RemoveConversationLinksBody,
-    body?: RemoveConversationLinksBody,
-  ): Promise<void> {
-    if (typeof bodyOrConversationId === "string") {
-      if (body === undefined) {
-        throw new Error("Removing conversation links by ID requires a request body.");
-      }
-      await this.target(bodyOrConversationId).removeLinks(body);
-      return;
-    }
-    const path = FrontBase.expandPath("/conversations/{conversation_id}/links", {
-      conversation_id: this.id,
-    });
-    await this.base.requestJson<undefined>("DELETE", path, { body: bodyOrConversationId });
-  }
-
-  /**
-   * List messages (`GET /conversations/{conversation_id}/messages`).
-   *
-   * **Required scope:** `messages:read`
-   *
-   * @see https://dev.frontapp.com/reference/list-conversation-messages
-   */
-  async listMessages(
-    query?: ListConversationMessagesQuery,
-  ): Promise<WithNormalizedPagination<ListConversationMessagesResponse>>;
-  async listMessages(
-    conversationId: string,
-    query?: ListConversationMessagesQuery,
-  ): Promise<WithNormalizedPagination<ListConversationMessagesResponse>>;
-  async listMessages(
-    queryOrConversationId?: string | ListConversationMessagesQuery,
-    query?: ListConversationMessagesQuery,
-  ): Promise<WithNormalizedPagination<ListConversationMessagesResponse>> {
-    if (typeof queryOrConversationId === "string") {
-      return await this.target(queryOrConversationId).listMessages(query);
-    }
-    return await requestListConversationMessages(this.base, this.id, queryOrConversationId);
-  }
-
-  /**
-   * Reply with a new message (`POST /conversations/{conversation_id}/messages`). Returns `202` with status metadata.
-   *
-   * **Required scope:** `messages:send`
-   *
-   * @see https://dev.frontapp.com/reference/create-message-reply
-   */
-  async createMessageReply(body: OutboundReplyMessage): Promise<AcceptedMessageReply>;
-  async createMessageReply(
-    conversationId: string,
-    body: OutboundReplyMessage,
-  ): Promise<AcceptedMessageReply>;
-  async createMessageReply(
-    bodyOrConversationId: string | OutboundReplyMessage,
-    body?: OutboundReplyMessage,
-  ): Promise<AcceptedMessageReply> {
-    if (typeof bodyOrConversationId === "string") {
-      if (body === undefined) {
-        throw new Error("Replying to a conversation by ID requires a request body.");
-      }
-      return await this.target(bodyOrConversationId).createMessageReply(body);
-    }
-    const path = FrontBase.expandPath("/conversations/{conversation_id}/messages", {
-      conversation_id: this.id,
-    });
-    return await this.base.requestJson<AcceptedMessageReply>("POST", path, {
-      body: bodyOrConversationId,
-    });
-  }
-
-  /**
-   * Update reminders (`PATCH /conversations/{conversation_id}/reminders`). The API returns `204`.
-   *
-   * **Required scope:** `conversations:write`
-   *
-   * @see https://dev.frontapp.com/reference/update-conversation-reminders
-   */
-  async updateReminders(body: UpdateConversationReminders): Promise<void>;
-  async updateReminders(conversationId: string, body: UpdateConversationReminders): Promise<void>;
-  async updateReminders(
-    bodyOrConversationId: string | UpdateConversationReminders,
-    body?: UpdateConversationReminders,
-  ): Promise<void> {
-    if (typeof bodyOrConversationId === "string") {
-      if (body === undefined) {
-        throw new Error("Updating conversation reminders by ID requires a request body.");
-      }
-      await this.target(bodyOrConversationId).updateReminders(body);
-      return;
-    }
-    const path = FrontBase.expandPath("/conversations/{conversation_id}/reminders", {
-      conversation_id: this.id,
-    });
-    await this.base.requestJson<undefined>("PATCH", path, { body: bodyOrConversationId });
-  }
-
-  /**
-   * Add tags (`POST /conversations/{conversation_id}/tags`). The API returns `204`.
-   *
-   * **Required scope:** `conversations:write`
-   *
-   * @see https://dev.frontapp.com/reference/add-conversation-tag
-   */
-  async addTag(body: TagIds): Promise<void>;
-  async addTag(conversationId: string, body: TagIds): Promise<void>;
-  async addTag(bodyOrConversationId: string | TagIds, body?: TagIds): Promise<void> {
-    if (typeof bodyOrConversationId === "string") {
-      if (body === undefined) {
-        throw new Error("Adding a conversation tag by ID requires a request body.");
-      }
-      await this.target(bodyOrConversationId).addTag(body);
-      return;
-    }
-    const path = FrontBase.expandPath("/conversations/{conversation_id}/tags", {
-      conversation_id: this.id,
-    });
-    await this.base.requestJson<undefined>("POST", path, { body: bodyOrConversationId });
-  }
-
-  /**
-   * Remove tags (`DELETE /conversations/{conversation_id}/tags`). The API returns `204`.
-   *
-   * **Required scope:** `conversations:write`
-   *
-   * @see https://dev.frontapp.com/reference/remove-conversation-tag
-   */
-  async removeTag(body: TagIds): Promise<void>;
-  async removeTag(conversationId: string, body: TagIds): Promise<void>;
-  async removeTag(bodyOrConversationId: string | TagIds, body?: TagIds): Promise<void> {
-    if (typeof bodyOrConversationId === "string") {
-      if (body === undefined) {
-        throw new Error("Removing a conversation tag by ID requires a request body.");
-      }
-      await this.target(bodyOrConversationId).removeTag(body);
-      return;
-    }
-    const path = FrontBase.expandPath("/conversations/{conversation_id}/tags", {
-      conversation_id: this.id,
-    });
-    await this.base.requestJson<undefined>("DELETE", path, { body: bodyOrConversationId });
-  }
-  /**
-   * Company conversations (`/conversations`, `/conversations/custom_fields`, `/conversations/search/{query}`, …).
-   *
-   * @see https://dev.frontapp.com/reference/conversations
-   */
-  /**
-   * List conversations (`GET /conversations`).
-   *
-   * **Required scope:** `conversations:read`
-   *
+  /** GET /conversations
+   * Required scope: `conversations:read`
    * @see https://dev.frontapp.com/reference/list-conversations
    */
-  async list(
-    query?: ListConversationsQuery,
-  ): Promise<WithNormalizedPagination<ListConversationsResponse>> {
-    return await this.base.requestJson<WithNormalizedPagination<ListConversationsResponse>>(
-      "GET",
-      "/conversations",
-      { query: queryFromListConversations(query) },
-    );
+  async list(params?: ListConversationsParams): Promise<OperationResponse<"list-conversations">> {
+    return await this.base.requestOperation("list-conversations", {
+      nextPageUrl: params?.nextPageUrl,
+      query: params,
+    });
   }
 
-  /**
-   * Create a discussion conversation (`POST /conversations`).
-   *
-   * **Required scope:** `conversations:write`
-   *
+  /** POST /conversations
+   * Required scope: `conversations:write`
    * @see https://dev.frontapp.com/reference/create-conversation
    */
-  async create(body: CreateConversation): Promise<FrontConversations> {
-    const data = await this.base.requestJson<ConversationResponse>("POST", "/conversations", {
-      body,
-    });
-    return new FrontConversations(this.base, data);
+  async create(body: CreateConversationParams): Promise<OperationResponse<"create-conversation">> {
+    return await this.base.requestOperation("create-conversation", { body });
   }
 
-  /**
-   * List custom fields that can be attached to a conversation (`GET /conversations/custom_fields`).
-   *
-   * **Required scope:** `conversations:read`
-   *
+  /** GET /conversations/{conversation_id}
+   * Required scope: `conversations:read`
+   * @see https://dev.frontapp.com/reference/get-conversation-by-id
+   */
+  async get(conversationId: string): Promise<OperationResponse<"get-conversation-by-id">> {
+    return await this.base.requestOperation("get-conversation-by-id", {
+      path: { conversation_id: conversationId },
+    });
+  }
+
+  /** PATCH /conversations/{conversation_id}
+   * Required scope: `conversations:write`
+   * @see https://dev.frontapp.com/reference/update-conversation
+   */
+  async update(
+    conversationId: string,
+    body: UpdateConversationParams,
+  ): Promise<OperationResponse<"update-conversation">> {
+    return await this.base.requestOperation("update-conversation", {
+      body,
+      path: { conversation_id: conversationId },
+    });
+  }
+
+  /** DELETE /conversations/{conversation_id}
+   * Required scope: `conversations:delete`
+   * @see https://dev.frontapp.com/reference/delete-conversation
+   */
+  async delete(conversationId: string): Promise<OperationResponse<"delete-conversation">> {
+    return await this.base.requestOperation("delete-conversation", {
+      path: { conversation_id: conversationId },
+    });
+  }
+
+  /** GET /conversations/custom_fields
+   * Required scope: `custom_fields:read`
    * @see https://dev.frontapp.com/reference/list-conversation-custom-fields
    */
-  async listCustomFields(): Promise<
-    WithNormalizedPagination<ListConversationCustomFieldsResponse>
-  > {
-    return await this.base.requestJson<
-      WithNormalizedPagination<ListConversationCustomFieldsResponse>
-    >("GET", "/conversations/custom_fields");
+  async listCustomFields(): Promise<OperationResponse<"list-conversation-custom-fields">> {
+    return await this.base.requestOperation("list-conversation-custom-fields");
   }
 
-  /**
-   * Search conversations (`GET /conversations/search/{query}`). The `{query}` segment is URL-encoded.
-   *
-   * **Required scope:** `conversations:read`
-   *
-   * @param query Search string (path segment).
+  /** GET /conversations/search/{query}
+   * Required scope: `conversations:read`
    * @see https://dev.frontapp.com/reference/search-conversations
    */
   async search(
     query: string,
-    params?: SearchConversationsQuery,
-  ): Promise<WithNormalizedPagination<SearchConversationsResponse>> {
-    const path = FrontBase.expandPath("/conversations/search/{query}", {
-      query,
+    params?: SearchConversationParams,
+  ): Promise<OperationResponse<"search-conversations">> {
+    return await this.base.requestOperation("search-conversations", {
+      nextPageUrl: params?.nextPageUrl,
+      path: { query },
+      query: params,
     });
-    return await this.base.requestJson<WithNormalizedPagination<SearchConversationsResponse>>(
-      "GET",
-      path,
-      { query: queryFromSearchConversations(params) },
-    );
   }
 
-  /**
-   * Fetch one conversation (`GET /conversations/{conversation_id}`).
-   *
-   * **Required scope:** `conversations:read`
-   *
-   * @param conversationId Conversation id or supported [resource alias](https://dev.frontapp.com/docs/resource-aliases-1).
-   * @see https://dev.frontapp.com/reference/get-conversation-by-id
+  /** PUT /conversations/{conversation_id}/assignee
+   * Required scope: `conversations:write`
+   * @see https://dev.frontapp.com/reference/update-conversation-assignee
    */
-  async get(conversationId: string): Promise<FrontConversations> {
-    const conversation = this.target(conversationId);
-    await conversation.refresh();
-    return conversation;
+  async updateAssignee(
+    conversationId: string,
+    body: UpdateConversationAssigneeParams,
+  ): Promise<OperationResponse<"update-conversation-assignee">> {
+    return await this.base.requestOperation("update-conversation-assignee", {
+      body,
+      path: { conversation_id: conversationId },
+    });
   }
 
-  /** Target a conversation by id without calling the API first. */
-  private target(conversationId: string): FrontConversations {
-    return new FrontConversations(this.base, undefined, conversationId);
+  /** GET /conversations/{conversation_id}/comments
+   * Required scope: `comments:read`
+   * @see https://dev.frontapp.com/reference/list-conversation-comments
+   */
+  async listComments(
+    conversationId: string,
+  ): Promise<OperationResponse<"list-conversation-comments">> {
+    return await this.base.requestOperation("list-conversation-comments", {
+      path: { conversation_id: conversationId },
+    });
+  }
+
+  /** POST /conversations/{conversation_id}/comments
+   * Required scope: `comments:write`
+   * @see https://dev.frontapp.com/reference/add-comment
+   */
+  async addComment(
+    conversationId: string,
+    body: AddConversationCommentParams,
+  ): Promise<OperationResponse<"add-comment">> {
+    return await this.base.requestOperation("add-comment", {
+      body,
+      path: { conversation_id: conversationId },
+    });
+  }
+
+  /** GET /conversations/{conversation_id}/drafts
+   * Required scope: `drafts:read`
+   * @see https://dev.frontapp.com/reference/list-conversation-drafts
+   */
+  async listDrafts(conversationId: string): Promise<OperationResponse<"list-conversation-drafts">> {
+    return await this.base.requestOperation("list-conversation-drafts", {
+      path: { conversation_id: conversationId },
+    });
+  }
+
+  /** POST /conversations/{conversation_id}/drafts
+   * Required scope: `drafts:write`
+   * @see https://dev.frontapp.com/reference/create-draft-reply
+   */
+  async createDraftReply(
+    conversationId: string,
+    body: CreateConversationDraftReplyParams,
+  ): Promise<OperationResponse<"create-draft-reply">> {
+    return await this.base.requestOperation("create-draft-reply", {
+      body,
+      path: { conversation_id: conversationId },
+    });
+  }
+
+  /** GET /conversations/{conversation_id}/events
+   * Required scope: `events:*:read`
+   * @see https://dev.frontapp.com/reference/list-conversation-events
+   */
+  async listEvents(
+    conversationId: string,
+    params?: ListConversationEventsParams,
+  ): Promise<OperationResponse<"list-conversation-events">> {
+    return await this.base.requestOperation("list-conversation-events", {
+      nextPageUrl: params?.nextPageUrl,
+      path: { conversation_id: conversationId },
+      query: params,
+    });
+  }
+
+  /** GET /conversations/{conversation_id}/followers
+   * Required scope: `teammates:read`
+   * @see https://dev.frontapp.com/reference/list-conversation-followers
+   */
+  async listFollowers(
+    conversationId: string,
+  ): Promise<OperationResponse<"list-conversation-followers">> {
+    return await this.base.requestOperation("list-conversation-followers", {
+      path: { conversation_id: conversationId },
+    });
+  }
+
+  /** POST /conversations/{conversation_id}/followers
+   * Required scope: `conversations:write`
+   * @see https://dev.frontapp.com/reference/add-conversation-followers
+   */
+  async addFollowers(
+    conversationId: string,
+    body: AddConversationFollowersParams,
+    params?: AddConversationFollowersQueryParams,
+  ): Promise<OperationResponse<"add-conversation-followers">> {
+    return await this.base.requestOperation("add-conversation-followers", {
+      body,
+      path: { conversation_id: conversationId },
+      query: params,
+    });
+  }
+
+  /** DELETE /conversations/{conversation_id}/followers
+   * Required scope: `conversations:write`
+   * @see https://dev.frontapp.com/reference/delete-conversation-followers
+   */
+  async deleteFollowers(
+    conversationId: string,
+    body?: DeleteConversationFollowersParams,
+  ): Promise<OperationResponse<"delete-conversation-followers">> {
+    return await this.base.requestOperation("delete-conversation-followers", {
+      body,
+      path: { conversation_id: conversationId },
+    });
+  }
+
+  /** GET /conversations/{conversation_id}/inboxes
+   * Required scope: `inboxes:read`
+   * @see https://dev.frontapp.com/reference/list-conversation-inboxes
+   */
+  async listInboxes(
+    conversationId: string,
+  ): Promise<OperationResponse<"list-conversation-inboxes">> {
+    return await this.base.requestOperation("list-conversation-inboxes", {
+      path: { conversation_id: conversationId },
+    });
+  }
+
+  /** POST /conversations/{conversation_id}/links
+   * Required scope: `conversations:write`
+   * @see https://dev.frontapp.com/reference/add-conversation-link
+   */
+  async addLink(
+    conversationId: string,
+    body: AddConversationLinkParams,
+  ): Promise<OperationResponse<"add-conversation-link">> {
+    return await this.base.requestOperation("add-conversation-link", {
+      body,
+      path: { conversation_id: conversationId },
+    });
+  }
+
+  /** DELETE /conversations/{conversation_id}/links
+   * Required scope: `conversations:write`
+   * @see https://dev.frontapp.com/reference/remove-conversation-links
+   */
+  async removeLinks(
+    conversationId: string,
+    body?: RemoveConversationLinksParams,
+  ): Promise<OperationResponse<"remove-conversation-links">> {
+    return await this.base.requestOperation("remove-conversation-links", {
+      body,
+      path: { conversation_id: conversationId },
+    });
+  }
+
+  /** GET /conversations/{conversation_id}/messages
+   * Required scope: `messages:read`
+   * @see https://dev.frontapp.com/reference/list-conversation-messages
+   */
+  async listMessages(
+    conversationId: string,
+    params?: ListConversationMessagesParams,
+  ): Promise<OperationResponse<"list-conversation-messages">> {
+    return await this.base.requestOperation("list-conversation-messages", {
+      nextPageUrl: params?.nextPageUrl,
+      path: { conversation_id: conversationId },
+      query: params,
+    });
+  }
+
+  /** POST /conversations/{conversation_id}/messages
+   * Required scope: `messages:send`
+   * @see https://dev.frontapp.com/reference/create-message-reply
+   */
+  async createMessageReply(
+    conversationId: string,
+    body: CreateConversationMessageReplyParams,
+  ): Promise<OperationResponse<"create-message-reply">> {
+    return await this.base.requestOperation("create-message-reply", {
+      body,
+      path: { conversation_id: conversationId },
+    });
+  }
+
+  /** PATCH /conversations/{conversation_id}/reminders
+   * Required scope: `conversations:write`
+   * @see https://dev.frontapp.com/reference/update-conversation-reminders
+   */
+  async updateReminders(
+    conversationId: string,
+    body: UpdateConversationRemindersParams,
+  ): Promise<OperationResponse<"update-conversation-reminders">> {
+    return await this.base.requestOperation("update-conversation-reminders", {
+      body,
+      path: { conversation_id: conversationId },
+    });
+  }
+
+  /** POST /conversations/{conversation_id}/tags
+   * Required scope: `conversations:write`
+   * @see https://dev.frontapp.com/reference/add-conversation-tag
+   */
+  async addTag(
+    conversationId: string,
+    body: AddConversationTagParams,
+  ): Promise<OperationResponse<"add-conversation-tag">> {
+    return await this.base.requestOperation("add-conversation-tag", {
+      body,
+      path: { conversation_id: conversationId },
+    });
+  }
+
+  /** DELETE /conversations/{conversation_id}/tags
+   * Required scope: `conversations:write`
+   * @see https://dev.frontapp.com/reference/remove-conversation-tag
+   */
+  async removeTag(
+    conversationId: string,
+    body?: RemoveConversationTagParams,
+  ): Promise<OperationResponse<"remove-conversation-tag">> {
+    return await this.base.requestOperation("remove-conversation-tag", {
+      body,
+      path: { conversation_id: conversationId },
+    });
+  }
+  /** GET /conversations/{conversation_id}/linked_conversations
+   * Required scope: `conversations:read`
+   * @see https://dev.frontapp.com/reference/list-linked-conversations
+   */
+  async listLinkedConversations(
+    conversationId: string,
+    params?: ListLinkedConversationsParams,
+  ): Promise<OperationResponse<"list-linked-conversations">> {
+    return await this.base.requestOperation("list-linked-conversations", {
+      nextPageUrl: params?.nextPageUrl,
+      path: { conversation_id: conversationId },
+      query: params,
+    });
+  }
+
+  /** POST /conversations/{conversation_id}/linked_conversations
+   * Required scope: `conversations:write`
+   * @see https://dev.frontapp.com/reference/create-linked-conversations
+   */
+  async createLinkedConversations(
+    conversationId: string,
+    body?: CreateLinkedConversationsParams,
+  ): Promise<OperationResponse<"create-linked-conversations">> {
+    return await this.base.requestOperation("create-linked-conversations", {
+      body,
+      path: { conversation_id: conversationId },
+    });
   }
 }

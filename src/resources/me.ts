@@ -1,15 +1,10 @@
 import type { FrontBase } from "../base";
+import type { OperationResponse } from "../operation";
 import type { components } from "../gen/schema.gen";
 
 export type IdentityResponse = components["schemas"]["IdentityResponse"];
 
-type ApiTokenDetailsResponse = components["responses"]["identity"]["content"]["application/json"];
-
-/**
- * API token / identity (`GET /me`).
- *
- * @see https://dev.frontapp.com/reference/me
- */
+/** Collection operations returning Front response data. */
 export class FrontMe {
   private readonly base: FrontBase;
 
@@ -17,10 +12,10 @@ export class FrontMe {
     this.base = base;
   }
 
-  /**
-   * Fetch API token details (`GET /me`).
+  /** GET /me
+   * @see https://dev.frontapp.com/reference/api-token-details
    */
-  async details(): Promise<ApiTokenDetailsResponse> {
-    return await this.base.requestJson<ApiTokenDetailsResponse>("GET", "/me");
+  async details(): Promise<OperationResponse<"api-token-details">> {
+    return await this.base.requestOperation("api-token-details");
   }
 }

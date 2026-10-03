@@ -1,8 +1,6 @@
 import type { FrontApiKeyOptions, FrontOAuthOptions } from "../../src/front";
 import { Front } from "../../src/index";
 
-export const NOT_SUPPORTED = /not supported/u;
-
 export const TEST_API_KEY = "test-token";
 
 export const jsonResponse = (

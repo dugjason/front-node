@@ -1,16 +1,10 @@
-import { FrontBase } from "../base";
-import type { components, operations } from "../gen/schema.gen";
-import type { WithNormalizedPagination } from "../normalize-response";
+import type { FrontBase } from "../base";
+import type { OperationResponse } from "../operation";
+import type { components } from "../gen/schema.gen";
 
 export type RuleResponse = components["schemas"]["RuleResponse"];
 
-type ListRulesResponse = operations["list-rules"]["responses"][200]["content"]["application/json"];
-
-/**
- * Company rules under `/rules` (list and fetch by id only).
- *
- * @see https://dev.frontapp.com/reference/rules
- */
+/** Collection operations returning Front response data. */
 export class FrontRules {
   private readonly base: FrontBase;
 
@@ -18,29 +12,19 @@ export class FrontRules {
     this.base = base;
   }
 
-  /**
-   * List rules (`GET /rules`).
-   *
-   * **Required scope:** `rules:read`
-   *
+  /** GET /rules
+   * Required scope: `rules:read`
    * @see https://dev.frontapp.com/reference/list-rules
    */
-  async list(): Promise<WithNormalizedPagination<ListRulesResponse>> {
-    return await this.base.requestJson<WithNormalizedPagination<ListRulesResponse>>(
-      "GET",
-      "/rules",
-    );
+  async list(): Promise<OperationResponse<"list-rules">> {
+    return await this.base.requestOperation("list-rules");
   }
 
-  /**
-   * Fetch one rule (`GET /rules/{rule_id}`).
-   *
-   * **Required scope:** `rules:read`
-   *
+  /** GET /rules/{rule_id}
+   * Required scope: `rules:read`
    * @see https://dev.frontapp.com/reference/get-rule
    */
-  async get(ruleId: string): Promise<RuleResponse> {
-    const path = FrontBase.expandPath("/rules/{rule_id}", { rule_id: ruleId });
-    return await this.base.requestJson<RuleResponse>("GET", path);
+  async get(ruleId: string): Promise<OperationResponse<"get-rule">> {
+    return await this.base.requestOperation("get-rule", { path: { rule_id: ruleId } });
   }
 }

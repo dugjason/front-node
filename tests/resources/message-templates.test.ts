@@ -6,9 +6,9 @@ test("messageTemplates.update targets an id without fetching it first", async ()
   const { front, requests } = createMockClient((request) => {
     if (request.method === "PATCH") {
       return jsonResponse({
-        _links: { self: "https://api2.frontapp.com/message_templates/mt_1" },
+        _links: { self: "https://api2.frontapp.com/message_templates/rsp_1" },
         body: "Updated body",
-        id: "mt_1",
+        id: "rsp_1",
         inbox_ids: null,
         is_available_for_all_inboxes: true,
         name: "Updated",
@@ -18,9 +18,9 @@ test("messageTemplates.update targets an id without fetching it first", async ()
     return jsonResponse({});
   });
 
-  await front.messageTemplates.update("mt_1", { body: "Updated body" });
+  await front.messageTemplates.update("rsp_1", { body: "Updated body" });
 
   expect(requests).toHaveLength(1);
   expect(requests[0]?.method).toBe("PATCH");
-  expect(requests[0]?.url).toBe("https://api2.frontapp.com/message_templates/mt_1");
+  expect(requests[0]?.url).toBe("https://api2.frontapp.com/message_templates/rsp_1");
 });

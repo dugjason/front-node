@@ -1,7 +1,6 @@
-import { FrontBase } from "../base";
-import type { NextPageParams } from "../base";
+import type { FrontBase, NextPageParams } from "../base";
 import type { components, operations } from "../gen/schema.gen";
-import type { PaginationInfo, WithNormalizedPagination } from "../normalize-response";
+import type { OperationResponse } from "../operation";
 
 export type TagResponse = components["schemas"]["TagResponse"];
 export type CreateTagParams =
@@ -17,63 +16,14 @@ export type UpdateTagParams = Omit<
 
 export type ListTagsParams = NonNullable<operations["list-tags"]["parameters"]["query"]> &
   NextPageParams;
-type ListTagsResponse = operations["list-tags"]["responses"][200]["content"]["application/json"] & {
-  pagination?: PaginationInfo;
-};
-
-type ListTagChildrenResponse =
-  operations["list-tag-children"]["responses"][200]["content"]["application/json"] & {
-    pagination?: PaginationInfo;
-  };
+type ListTagsResponse = OperationResponse<"list-tags">;
+type ListTagChildrenResponse = OperationResponse<"list-tag-children">;
 
 export type ListTaggedConversationsParams = NonNullable<
   operations["list-tagged-conversations"]["parameters"]["query"]
 > &
   NextPageParams;
-type ListTaggedConversationsResponse =
-  operations["list-tagged-conversations"]["responses"][200]["content"]["application/json"];
-
-const tagPath = (tagId: string): string =>
-  FrontBase.expandPath("/tags/{tag_id}", { tag_id: tagId });
-
-const queryFromListTags = (q?: ListTagsParams): Record<string, string | undefined> | undefined => {
-  if (!q) {
-    return;
-  }
-  const out: Record<string, string | undefined> = {};
-  if (q.limit !== undefined) {
-    out.limit = String(q.limit);
-  }
-  if (q.page_token !== undefined) {
-    out.page_token = String(q.page_token);
-  }
-  if (q.sort_by !== undefined) {
-    out.sort_by = String(q.sort_by);
-  }
-  if (q.sort_order !== undefined) {
-    out.sort_order = String(q.sort_order);
-  }
-  return out;
-};
-
-const queryFromTaggedConversations = (
-  q?: ListTaggedConversationsParams,
-): Record<string, string | undefined> | undefined => {
-  if (!q) {
-    return;
-  }
-  const out: Record<string, string | undefined> = {};
-  if (q.q !== undefined) {
-    out.q = String(q.q);
-  }
-  if (q.limit !== undefined) {
-    out.limit = String(q.limit);
-  }
-  if (q.page_token !== undefined) {
-    out.page_token = String(q.page_token);
-  }
-  return out;
-};
+type ListTaggedConversationsResponse = OperationResponse<"list-tagged-conversations">;
 
 /**
  * Company tag collection (`GET/POST /tags`) and by-ID operations (`/tags/{tag_id}`).
@@ -95,12 +45,10 @@ export class FrontTags {
    *
    * @see https://dev.frontapp.com/reference/list-tags
    */
-  async list(query?: ListTagsParams): Promise<WithNormalizedPagination<ListTagsResponse>> {
-    return await this.base.requestJson<WithNormalizedPagination<ListTagsResponse>>("GET", "/tags", {
-      query:
-        query?.nextPageUrl === undefined
-          ? queryFromListTags(query)
-          : FrontBase.queryFromNextPageUrl(query.nextPageUrl, "/tags"),
+  async list(query?: ListTagsParams): Promise<ListTagsResponse> {
+    return await this.base.requestOperation("list-tags", {
+      nextPageUrl: query?.nextPageUrl,
+      query,
     });
   }
 
@@ -114,7 +62,7 @@ export class FrontTags {
    * @see https://dev.frontapp.com/reference/create-tag
    */
   async create(body: CreateTagParams): Promise<TagResponse> {
-    return await this.base.requestJson<TagResponse>("POST", "/tags", { body });
+    return await this.base.requestOperation("create-tag", { body });
   }
 
   /**
@@ -126,7 +74,7 @@ export class FrontTags {
    * @see https://dev.frontapp.com/reference/get-tag
    */
   async get(tagId: string): Promise<TagResponse> {
-    return await this.base.requestJson<TagResponse>("GET", tagPath(tagId));
+    return await this.base.requestOperation("get-tag", { path: { tag_id: tagId } });
   }
 
   /**
@@ -137,7 +85,7 @@ export class FrontTags {
    * @see https://dev.frontapp.com/reference/update-a-tag
    */
   async update(tagId: string, body: UpdateTagParams): Promise<void> {
-    await this.base.requestJson<undefined>("PATCH", tagPath(tagId), { body });
+    return await this.base.requestOperation("update-a-tag", { body, path: { tag_id: tagId } });
   }
 
   /**
@@ -146,7 +94,7 @@ export class FrontTags {
    * **Required scope:** `tags:delete`
    */
   async delete(tagId: string): Promise<void> {
-    await this.base.requestJson<undefined>("DELETE", tagPath(tagId));
+    return await this.base.requestOperation("delete-tag", { path: { tag_id: tagId } });
   }
 
   /**
@@ -156,20 +104,8 @@ export class FrontTags {
    *
    * @see https://dev.frontapp.com/reference/list-tag-children
    */
-  async listChildren(
-    tagId: string,
-    params?: NextPageParams,
-  ): Promise<WithNormalizedPagination<ListTagChildrenResponse>> {
-    return await this.base.requestJson<WithNormalizedPagination<ListTagChildrenResponse>>(
-      "GET",
-      `${tagPath(tagId)}/children`,
-      {
-        query:
-          params?.nextPageUrl === undefined
-            ? undefined
-            : FrontBase.queryFromNextPageUrl(params.nextPageUrl, `${tagPath(tagId)}/children`),
-      },
-    );
+  async listChildren(tagId: string): Promise<ListTagChildrenResponse> {
+    return await this.base.requestOperation("list-tag-children", { path: { tag_id: tagId } });
   }
 
   /**
@@ -180,7 +116,7 @@ export class FrontTags {
    * @see https://dev.frontapp.com/reference/create-child-tag
    */
   async createChild(tagId: string, body: CreateChildTagParams): Promise<TagResponse> {
-    return await this.base.requestJson<TagResponse>("POST", `${tagPath(tagId)}/children`, { body });
+    return await this.base.requestOperation("create-child-tag", { body, path: { tag_id: tagId } });
   }
 
   /**
@@ -194,16 +130,11 @@ export class FrontTags {
   async listTaggedConversations(
     tagId: string,
     query?: ListTaggedConversationsParams,
-  ): Promise<WithNormalizedPagination<ListTaggedConversationsResponse>> {
-    return await this.base.requestJson<WithNormalizedPagination<ListTaggedConversationsResponse>>(
-      "GET",
-      `${tagPath(tagId)}/conversations`,
-      {
-        query:
-          query?.nextPageUrl === undefined
-            ? queryFromTaggedConversations(query)
-            : FrontBase.queryFromNextPageUrl(query.nextPageUrl, `${tagPath(tagId)}/conversations`),
-      },
-    );
+  ): Promise<ListTaggedConversationsResponse> {
+    return await this.base.requestOperation("list-tagged-conversations", {
+      nextPageUrl: query?.nextPageUrl,
+      path: { tag_id: tagId },
+      query,
+    });
   }
 }
