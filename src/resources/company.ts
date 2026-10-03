@@ -1,28 +1,19 @@
-import type { FrontBase, NextPageParams } from "../base";
-import type { components, operations } from "../gen/schema.gen";
-import type { PaginationInfo, WithNormalizedPagination } from "../normalize-response";
+import type { FrontBase } from "../base";
+import type { components } from "../gen/schema.gen";
+import type { OperationListParams, OperationParams, OperationResponse } from "../operation";
 import type { TagResponse } from "./tags";
 
 export type RuleResponse = components["schemas"]["RuleResponse"];
 export type StatusResponse = components["schemas"]["StatusResponse"];
 
-type ListCompanyRulesResponse =
-  operations["list-all-company-rules"]["responses"][200]["content"]["application/json"];
+type ListCompanyRulesResponse = OperationResponse<"list-all-company-rules">;
 
-type ListCompanyTicketStatusesResponse =
-  operations["list-company-ticket-statuses"]["responses"][200]["content"]["application/json"];
+type ListCompanyTicketStatusesResponse = OperationResponse<"list-company-ticket-statuses">;
 
-export type ListCompanyTagsParams = NonNullable<
-  operations["list-company-tags"]["parameters"]["query"]
-> &
-  NextPageParams;
-export type CreateCompanyTagParams =
-  operations["create-company-tag"]["requestBody"]["content"]["application/json"];
+export type ListCompanyTagsParams = OperationListParams<"list-company-tags">;
+export type CreateCompanyTagParams = NonNullable<OperationParams<"create-company-tag">["body"]>;
 
-type ListCompanyTagsResponse =
-  operations["list-company-tags"]["responses"][200]["content"]["application/json"] & {
-    pagination?: PaginationInfo;
-  };
+type ListCompanyTagsResponse = OperationResponse<"list-company-tags">;
 
 /**
  * Company-scoped rules, ticket statuses, and tags (`/company/rules`, `/company/statuses`, `/company/tags`).
@@ -42,7 +33,7 @@ export class FrontCompany {
    *
    * **Required scope:** `rules:read`
    */
-  async listRules(): Promise<WithNormalizedPagination<ListCompanyRulesResponse>> {
+  async listRules(): Promise<ListCompanyRulesResponse> {
     return await this.base.requestOperation("list-all-company-rules");
   }
 
@@ -51,7 +42,7 @@ export class FrontCompany {
    *
    * **Required scope:** `statuses:read`
    */
-  async listTicketStatuses(): Promise<WithNormalizedPagination<ListCompanyTicketStatusesResponse>> {
+  async listTicketStatuses(): Promise<ListCompanyTicketStatusesResponse> {
     return await this.base.requestOperation("list-company-ticket-statuses");
   }
 
@@ -71,9 +62,7 @@ export class FrontCompany {
    *
    * **Required scope:** `tags:read`
    */
-  async listTags(
-    query?: ListCompanyTagsParams,
-  ): Promise<WithNormalizedPagination<ListCompanyTagsResponse>> {
+  async listTags(query?: ListCompanyTagsParams): Promise<ListCompanyTagsResponse> {
     return await this.base.requestOperation("list-company-tags", {
       nextPageUrl: query?.nextPageUrl,
       query,

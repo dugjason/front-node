@@ -17,12 +17,6 @@ export default defineConfig({
       },
     },
     {
-      files: ["src/entity.ts"],
-      rules: {
-        "class-methods-use-this": "off",
-      },
-    },
-    {
       files: ["src/resources/**/*.ts"],
       rules: {
         "max-classes-per-file": "off",

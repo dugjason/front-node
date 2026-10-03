@@ -102,6 +102,8 @@ export {
   type UpdateConversationRemindersParams,
   type AddConversationTagParams,
   type RemoveConversationTagParams,
+  type ListLinkedConversationsParams,
+  type CreateLinkedConversationsParams,
   FrontConversations,
 } from "./resources/conversations";
 export { FrontDownloads } from "./resources/downloads";
@@ -219,6 +221,9 @@ export {
   type CreateTeammateSignatureParams,
   type ListTeammateTagsParams,
   type CreateTeammateTagParams,
+  type CreateTeammatePrivateInboxParams,
+  type ListTeammateTimeOffsParams,
+  type CreateTimeOffParams,
   FrontTeammates,
 } from "./resources/teammates";
 export {
@@ -239,8 +244,9 @@ export {
   type CreateTeamTagParams,
   type ListTeamViewsParams,
   type CreateTeamViewParams,
-  FrontTeams,
+  type ListTeamTimeOffsParams,
   type CreateTeamInboxParams,
+  FrontTeams,
 } from "./resources/teams";
 export {
   type ViewResponse,
@@ -250,19 +256,6 @@ export {
   FrontViews,
 } from "./resources/views";
 export type { OperationParams, OperationListParams, OperationResponse } from "./operation";
-
-export {
-  type ListLinkedConversationsParams,
-  type CreateLinkedConversationsParams,
-} from "./resources/conversations";
-
-export { type ListTeamTimeOffsParams } from "./resources/teams";
-
-export {
-  type CreateTeammatePrivateInboxParams,
-  type ListTeammateTimeOffsParams,
-  type CreateTimeOffParams,
-} from "./resources/teammates";
 
 export {
   type UpdateTimeOffParams,

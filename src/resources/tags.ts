@@ -1,28 +1,19 @@
-import type { FrontBase, NextPageParams } from "../base";
-import type { components, operations } from "../gen/schema.gen";
-import type { OperationResponse } from "../operation";
+import type { FrontBase } from "../base";
+import type { components } from "../gen/schema.gen";
+import type { OperationListParams, OperationParams, OperationResponse } from "../operation";
 
 export type TagResponse = components["schemas"]["TagResponse"];
-export type CreateTagParams =
-  operations["create-tag"]["requestBody"]["content"]["application/json"];
-export type CreateChildTagParams =
-  operations["create-child-tag"]["requestBody"]["content"]["application/json"];
+export type CreateTagParams = NonNullable<OperationParams<"create-tag">["body"]>;
+export type CreateChildTagParams = NonNullable<OperationParams<"create-child-tag">["body"]>;
 
 /** The schema documents `null` as the value that removes a tag's parent. */
-export type UpdateTagParams = Omit<
-  operations["update-a-tag"]["requestBody"]["content"]["application/json"],
-  "parent_tag_id"
-> & { parent_tag_id?: string | null };
+export type UpdateTagParams = NonNullable<OperationParams<"update-a-tag">["body"]>;
 
-export type ListTagsParams = NonNullable<operations["list-tags"]["parameters"]["query"]> &
-  NextPageParams;
+export type ListTagsParams = OperationListParams<"list-tags">;
 type ListTagsResponse = OperationResponse<"list-tags">;
 type ListTagChildrenResponse = OperationResponse<"list-tag-children">;
 
-export type ListTaggedConversationsParams = NonNullable<
-  operations["list-tagged-conversations"]["parameters"]["query"]
-> &
-  NextPageParams;
+export type ListTaggedConversationsParams = OperationListParams<"list-tagged-conversations">;
 type ListTaggedConversationsResponse = OperationResponse<"list-tagged-conversations">;
 
 /**

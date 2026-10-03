@@ -24,6 +24,14 @@ describe("pageTokenFromPaginationNextUrl", () => {
     expect(pageTokenFromPaginationNextUrl()).toBe(null);
     expect(pageTokenFromPaginationNextUrl("")).toBe(null);
   });
+
+  test.each([`${base}/tags?limit=25`, `${base}/tags?page_token=`])(
+    "returns null when the next URL has no nonempty token: %s",
+    (next) => {
+      const token: string | null = pageTokenFromPaginationNextUrl(next);
+      expect(token).toBe(null);
+    },
+  );
 });
 
 describe("normalizeFrontResponse", () => {

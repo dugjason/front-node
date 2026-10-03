@@ -23,7 +23,7 @@ export interface PaginationInfo {
  *
  * @param next Value of `_pagination.next` from the raw API.
  */
-export const pageTokenFromPaginationNextUrl = (next?: string | null): string | null | undefined => {
+export const pageTokenFromPaginationNextUrl = (next?: string | null): string | null => {
   if (!next) {
     return null;
   }
