@@ -53,7 +53,9 @@
     "fmt": "bun x oxfmt -c oxfmt.config.ts .",
     "fmt:check": "bun x oxfmt --check -c oxfmt.config.ts .",
     "fix": "bun x ultracite fix .",
-    "ultracite": "bun x ultracite check ."
+    "ultracite": "bun x ultracite check .",
+    "audit:endpoints": "bun scripts/check-endpoint-coverage.ts",
+    "audit:deprecations": "bun scripts/check-endpoint-deprecations.ts"
   },
   "devDependencies": {
     "@arethetypeswrong/core": "0.18.5",
