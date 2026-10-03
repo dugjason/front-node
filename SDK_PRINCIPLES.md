@@ -28,7 +28,7 @@ Do not derive update parameters from the full response or send a response object
 
 ## Expose only supported operations
 
-Add methods only for endpoints Front supports. A channel collection must not expose `delete()` if Front has no channel deletion endpoint. Avoid generic CRUD interfaces that require unsupported methods or throwing stubs.
+Add methods only for endpoints Front supports. Exclude endpoints marked deprecated in the OpenAPI spec, and exclude deprecated resource groups and their related routes. A channel collection must not expose `delete()` if Front has no channel deletion endpoint. Avoid generic CRUD interfaces that require unsupported methods or throwing stubs.
 
 Share HTTP handling, authentication, errors, and URL construction. Keep endpoint-specific methods and parameter types explicit.
 
@@ -52,7 +52,7 @@ if (first.pagination?.next) {
 
 When `nextPageUrl` is supplied, its query parameters take precedence. Ignore other parameters in the call, including `page_token`, filters, sorting, and page size. Read the URL's query parameters and request the known list endpoint through the configured client origin. Reject invalid URLs or URLs for a different endpoint before sending a request.
 
-Direct `page_token` requests remain supported. Do not invent numeric page indexes or copy Stripe's `starting_after` parameter. A list request must not fetch subsequent pages automatically.
+Expose `nextPageUrl` only when the OpenAPI operation declares `page_token`. Endpoints with no query parameters must not accept pagination options. Direct `page_token` requests remain supported for endpoints that declare them. Do not invent numeric page indexes or copy Stripe's `starting_after` parameter. A list request must not fetch subsequent pages automatically.
 
 Automatic pagination and async iteration remain deferred; explicit page requests must continue to work if those conveniences are added later.
 
