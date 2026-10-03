@@ -6,9 +6,9 @@ const pathsSection = schema.slice(
   schema.indexOf("export interface paths {"),
   schema.indexOf("export type webhooks"),
 );
-const pathPattern = /^ {2}"(?<path>[^"]+)": \{/gmu;
+const pathPattern = /^ +"(?<path>\/[^"]*)": \{/gmu;
 const operationPattern =
-  /^ {4}(?<method>get|post|put|patch|delete|head|options|trace): operations\["(?<operation>[^"]+)"\];/gmu;
+  /^ +(?<method>get|post|put|patch|delete|head|options|trace): operations\["(?<operation>[^"]+)"\];/gmu;
 const precedingCommentPattern = /\/\*\*(?<description>(?:(?!\*\/)[\s\S])*)\*\/\s*$/u;
 const rootPathPattern = /^\/[^/]+$/u;
 const paths = [...pathsSection.matchAll(pathPattern)];
