@@ -1,10 +1,9 @@
 import { describe, expect, test } from "bun:test";
 
-import { FrontSignatures } from "../../src/index";
 import { createMockClient, createTestSetup, jsonResponse } from "../helpers/setup";
 
 describe("signatures", () => {
-  test("signatures.get returns a hydrated FrontSignatures target and sends GET /signatures/{id}", async () => {
+  test("signatures.get returns signature data and sends GET /signatures/{id}", async () => {
     const { front, requests } = createMockClient(() =>
       jsonResponse({
         _links: { self: "https://api2.frontapp.com/signatures/sig_abc" },
@@ -21,16 +20,15 @@ describe("signatures", () => {
 
     const sig = await front.signatures.get("sig_abc");
 
-    expect(sig).toBeInstanceOf(FrontSignatures);
     expect(sig.id).toBe("sig_abc");
     expect(sig.name).toBe("Default");
     expect(sig.body).toBe("<p>Hi</p>");
-    expect(sig.isPrivate).toBe(true);
+    expect(sig.is_private).toBe(true);
     expect(requests[0]?.method).toBe("GET");
     expect(requests[0]?.url).toBe("https://api2.frontapp.com/signatures/sig_abc");
   });
 
-  test("FrontSignatures.save sends PATCH and applies 200 response body", async () => {
+  test("signatures.update sends PATCH and returns the 200 response body", async () => {
     const { front, requests } = createMockClient((req) => {
       const { url } = req;
       if (req.method === "GET" && url.endsWith("/signatures/sig_abc")) {
@@ -62,9 +60,7 @@ describe("signatures", () => {
       return jsonResponse({});
     });
 
-    const sig = await front.signatures.get("sig_abc");
-    sig.name = "New";
-    await sig.save();
+    const sig = await front.signatures.update("sig_abc", { is_default: false, name: "New" });
 
     const patch = requests.find((r) => r.method === "PATCH");
     expect(patch?.url).toBe("https://api2.frontapp.com/signatures/sig_abc");
@@ -90,7 +86,7 @@ describe("signatures", () => {
       return jsonResponse({});
     });
 
-    await front.signatures.update("sig_abc", { name: "Renamed" });
+    await front.signatures.update("sig_abc", { is_default: false, name: "Renamed" });
 
     expect(requests).toHaveLength(1);
     expect(requests[0]?.method).toBe("PATCH");

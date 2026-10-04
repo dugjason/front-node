@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { FrontComments } from "../../src/index";
-import { createMockClient, jsonResponse, NOT_SUPPORTED } from "../helpers/setup";
+import { createMockClient, jsonResponse } from "../helpers/setup";
 
 const commentAuthor = {
   _links: { self: "https://api2.frontapp.com/teammates/tea_1" },
@@ -17,8 +16,17 @@ const commentAuthor = {
   username: "ab",
 };
 
+const commentSnapshot = (id: string, body: string) => ({
+  _links: { self: `https://api2.frontapp.com/comments/${id}` },
+  attachments: [],
+  author: commentAuthor,
+  body,
+  id,
+  is_pinned: false,
+});
+
 describe("comments", () => {
-  test("comments.get returns a hydrated FrontComments instance", async () => {
+  test("comments.get returns a comment response data", async () => {
     const { front, requests } = createMockClient((req) => {
       if (req.method === "GET" && req.url.endsWith("/comments/com_1")) {
         return jsonResponse({
@@ -33,7 +41,6 @@ describe("comments", () => {
       return jsonResponse({});
     });
     const c = await front.comments.get("com_1");
-    expect(c).toBeInstanceOf(FrontComments);
     expect(c.id).toBe("com_1");
     expect(c.body).toBe("Hello");
     expect(requests[0]?.url).toBe("https://api2.frontapp.com/comments/com_1");
@@ -58,7 +65,7 @@ describe("comments", () => {
     expect(requests[0]?.url).toBe("https://api2.frontapp.com/comments/com_1/replies");
   });
 
-  test("FrontComments.update PATCHes slash-terminated path", async () => {
+  test("comments.update PATCHes /comments/{id}", async () => {
     const { front, requests } = createMockClient((req) => {
       const { url } = req;
       if (req.method === "GET" && url.endsWith("/comments/com_1")) {
@@ -71,7 +78,7 @@ describe("comments", () => {
           is_pinned: false,
         });
       }
-      if (req.method === "PATCH" && url.endsWith("/comments/com_1/")) {
+      if (req.method === "PATCH" && url.endsWith("/comments/com_1")) {
         return jsonResponse({
           _links: { self: "https://api2.frontapp.com/comments/com_1" },
           attachments: [],
@@ -83,15 +90,14 @@ describe("comments", () => {
       }
       return jsonResponse({});
     });
-    const c = await front.comments.get("com_1");
-    await c.update({ body: "New", is_pinned: true });
+    const c = await front.comments.update("com_1", { body: "New", is_pinned: true });
     expect(c.body).toBe("New");
-    expect(c.isPinned).toBe(true);
+    expect(c.is_pinned).toBe(true);
     const patch = requests.find((r) => r.method === "PATCH");
-    expect(patch?.url).toBe("https://api2.frontapp.com/comments/com_1/");
+    expect(patch?.url).toBe("https://api2.frontapp.com/comments/com_1");
   });
 
-  test("FrontComments.listMentions and addReply hit expected paths", async () => {
+  test("comments.listMentions and addReply hit expected paths", async () => {
     const { front, requests } = createMockClient((req) => {
       const { url } = req;
       if (req.method === "GET" && url.endsWith("/comments/com_1")) {
@@ -122,9 +128,8 @@ describe("comments", () => {
       }
       return jsonResponse({});
     });
-    const c = await front.comments.get("com_1");
-    await c.listMentions();
-    const reply = await c.addReply({ body: "Reply" });
+    await front.comments.listMentions("com_1");
+    const reply = await front.comments.addReply("com_1", { body: "Reply" });
     expect(reply.id).toBe("com_2");
     expect(
       requests.some(
@@ -138,7 +143,7 @@ describe("comments", () => {
     ).toBe(true);
   });
 
-  test("FrontComments.downloadAttachment returns Response body", async () => {
+  test("comments.downloadAttachment returns Response body", async () => {
     const { front, requests } = createMockClient((req) => {
       const { url } = req;
       if (req.method === "GET" && url.endsWith("/comments/com_1")) {
@@ -159,8 +164,7 @@ describe("comments", () => {
       }
       return jsonResponse({});
     });
-    const c = await front.comments.get("com_1");
-    const res = await c.downloadAttachment("att_1");
+    const res = await front.comments.downloadAttachment("com_1", "att_1");
     expect(res.ok).toBe(true);
     expect(new Uint8Array(await res.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3]));
     expect(
@@ -170,18 +174,14 @@ describe("comments", () => {
     ).toBe(true);
   });
 
-  test("FrontComments.delete throws", async () => {
-    const { front } = createMockClient(() =>
-      jsonResponse({
-        _links: { self: "https://api2.frontapp.com/comments/com_1" },
-        attachments: [],
-        author: commentAuthor,
-        body: "Hi",
-        id: "com_1",
-        is_pinned: false,
-      }),
+  test("comments.update PATCHes by ID and returns the updated comment", async () => {
+    const { front, requests } = createMockClient(() =>
+      jsonResponse({ ...commentSnapshot("com_1", "New"), is_pinned: true }),
     );
-    const c = await front.comments.get("com_1");
-    await expect(c.delete()).rejects.toThrow(NOT_SUPPORTED);
+    const updated = await front.comments.update("com_1", { is_pinned: true });
+    expect(updated.is_pinned).toBe(true);
+    expect(requests).toHaveLength(1);
+    expect(requests[0]?.method).toBe("PATCH");
+    expect(requests[0]?.url).toBe("https://api2.frontapp.com/comments/com_1");
   });
 });

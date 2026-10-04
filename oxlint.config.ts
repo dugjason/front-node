@@ -1,19 +1,19 @@
 import { defineConfig } from "oxlint";
+import antislop from "ultracite/oxlint/anti-slop";
 import core from "ultracite/oxlint/core";
 
 export default defineConfig({
-  extends: [core],
+  extends: [core, antislop],
+  ignorePatterns: [
+    "src/gen/**/*.ts",
+    ...(core.ignorePatterns ?? []),
+    ...(antislop.ignorePatterns ?? []),
+  ],
   overrides: [
     {
       files: ["src/gen/**/*.ts"],
       rules: {
         "typescript/consistent-indexed-object-style": "off",
-      },
-    },
-    {
-      files: ["src/resource.ts"],
-      rules: {
-        "class-methods-use-this": "off",
       },
     },
     {
@@ -35,4 +35,7 @@ export default defineConfig({
       },
     },
   ],
+  rules: {
+    "anti-slop/require-safety-comment-for-type-assertion": "off",
+  },
 });

@@ -1,222 +1,102 @@
-import { FrontBase } from "../base";
-import type { components, operations } from "../gen/schema.gen";
-import type { WithNormalizedPagination } from "../normalize-response";
-import { FrontResource } from "../resource";
+import type { FrontBase } from "../base";
+import type { OperationParams, OperationResponse } from "../operation";
+import type { components } from "../gen/schema.gen";
 
 export type SignatureResponse = components["schemas"]["SignatureResponse"];
-export type UpdateSignature = components["schemas"]["UpdateSignature"];
-export type CreatePrivateSignature = components["schemas"]["CreatePrivateSignature"];
-export type CreateSharedSignature = components["schemas"]["CreateSharedSignature"];
 
-type ListSignaturesResponse =
-  operations["list-teammate-signatures"]["responses"][200]["content"]["application/json"];
+export type UpdateSignatureParams = NonNullable<OperationParams<"update-signature">["body"]>;
+export type CreateSignatureTeammateParams = NonNullable<
+  OperationParams<"create-teammate-signature">["body"]
+>;
+export type CreateSignatureTeamParams = NonNullable<
+  OperationParams<"create-team-signature">["body"]
+>;
 
-const signatureResponseToUpdateBody = (state: SignatureResponse): UpdateSignature => ({
-  body: state.body,
-  channel_ids: state.channel_ids === null ? undefined : state.channel_ids,
-  is_default: state.is_default,
-  is_visible_for_all_teammate_channels: state.is_visible_for_all_teammate_channels,
-  name: state.name ?? undefined,
-  sender_info: state.sender_info ?? undefined,
-});
+/** Collection operations returning Front response data. */
+export class FrontSignatures {
+  private readonly base: FrontBase;
 
-/**
- * One signature (`/signatures/{signature_id}`).
- *
- * Writable camelCase: `name`, `body`, `senderInfo`, `isVisibleForAllTeammateChannels`, `isDefault`, `channelIds`, `links`.
- * Read-only: `id`, `isPrivate`. `PATCH` returns the updated resource JSON; {@link update} and {@link save} replace local state.
- *
- * @see https://dev.frontapp.com/reference/signatures
- */
-export class FrontSignatures extends FrontResource<SignatureResponse, UpdateSignature> {
-  protected selfPath(): string {
-    return FrontBase.expandPath("/signatures/{signature_id}", {
-      signature_id: this.id,
-    });
+  constructor(base: FrontBase) {
+    this.base = base;
   }
 
-  get name(): string | null {
-    return this.pick("name");
-  }
-
-  set name(value: string | null) {
-    this.assign("name", value);
-  }
-
-  get body(): string {
-    return this.pick("body");
-  }
-
-  set body(value: string) {
-    this.assign("body", value);
-  }
-
-  get senderInfo(): string | null {
-    return this.pick("sender_info");
-  }
-
-  set senderInfo(value: string | null) {
-    this.assign("sender_info", value);
-  }
-
-  get isVisibleForAllTeammateChannels(): boolean {
-    return this.pick("is_visible_for_all_teammate_channels");
-  }
-
-  set isVisibleForAllTeammateChannels(value: boolean) {
-    this.assign("is_visible_for_all_teammate_channels", value);
-  }
-
-  get isDefault(): boolean {
-    return this.pick("is_default");
-  }
-
-  set isDefault(value: boolean) {
-    this.assign("is_default", value);
-  }
-
-  get isPrivate(): boolean {
-    return this.pick("is_private");
-  }
-
-  get channelIds(): string[] | null {
-    return this.pick("channel_ids");
-  }
-
-  set channelIds(value: string[] | null) {
-    this.assign("channel_ids", value);
-  }
-
-  /**
-   * Build the `PATCH` body implied by the current property values.
-   * @see https://dev.frontapp.com/reference/update-signature
-   */
-  toUpdateBody(): UpdateSignature {
-    return signatureResponseToUpdateBody(this.state);
-  }
-
-  /**
-   * Update this signature (`PATCH /signatures/{signature_id}`). The API returns `200` with the updated resource.
-   *
-   * **Required scope:** `signatures:write`
-   *
-   * @param body Fields to change (OpenAPI {@link UpdateSignature}).
-   * @see https://dev.frontapp.com/reference/update-signature
-   */
-  async update(body: UpdateSignature | Partial<UpdateSignature>): Promise<void>;
-  async update(
-    signatureId: string,
-    body: UpdateSignature | Partial<UpdateSignature>,
-  ): Promise<void>;
-  async update(
-    bodyOrSignatureId: UpdateSignature | Partial<UpdateSignature> | string,
-    directBody?: UpdateSignature | Partial<UpdateSignature>,
-  ): Promise<void> {
-    if (typeof bodyOrSignatureId === "string") {
-      await this.target(bodyOrSignatureId).update(directBody ?? {});
-      return;
-    }
-    await this.patchReplaceFromResponse(bodyOrSignatureId);
-  }
-
-  override async delete(signatureId?: string): Promise<void> {
-    if (signatureId === undefined) {
-      await super.delete();
-      return;
-    }
-    await this.target(signatureId).delete();
-  }
-
-  /**
-   * Fetch one signature (`GET /signatures/{signature_id}`).
-   *
-   * **Required scope:** `signatures:read`
-   *
-   * @param signatureId Signature id.
+  /** GET /signatures/{signature_id}
+   * Required scope: `signatures:read`
    * @see https://dev.frontapp.com/reference/get-signatures
    */
-  async get(signatureId: string): Promise<FrontSignatures> {
-    return await this.target(signatureId).refresh();
+  async get(signatureId: string): Promise<OperationResponse<"get-signatures">> {
+    return await this.base.requestOperation("get-signatures", {
+      path: { signature_id: signatureId },
+    });
   }
 
-  /** Target a signature by id without calling the API first. */
-  private target(signatureId: string): FrontSignatures {
-    return new FrontSignatures(this.base, undefined, signatureId);
+  /** PATCH /signatures/{signature_id}
+   * Required scope: `signatures:write`
+   * @see https://dev.frontapp.com/reference/update-signature
+   */
+  async update(
+    signatureId: string,
+    body: UpdateSignatureParams,
+  ): Promise<OperationResponse<"update-signature">> {
+    return await this.base.requestOperation("update-signature", {
+      body,
+      path: { signature_id: signatureId },
+    });
   }
 
-  /**
-   * List signatures for a teammate (`GET /teammates/{teammate_id}/signatures`).
-   *
-   * **Required scope:** `signatures:read`
-   *
-   * @param teammateId Teammate id or supported [resource alias](https://dev.frontapp.com/docs/resource-aliases-1).
+  /** DELETE /signatures/{signature_id}
+   * Required scope: `signatures:delete`
+   * @see https://dev.frontapp.com/reference/delete-signature
+   */
+  async delete(signatureId: string): Promise<OperationResponse<"delete-signature">> {
+    return await this.base.requestOperation("delete-signature", {
+      path: { signature_id: signatureId },
+    });
+  }
+
+  /** GET /teammates/{teammate_id}/signatures
+   * Required scope: `signatures:read`
    * @see https://dev.frontapp.com/reference/list-teammate-signatures
    */
-  async listTeammate(
-    teammateId: string,
-  ): Promise<WithNormalizedPagination<ListSignaturesResponse>> {
-    const path = FrontBase.expandPath("/teammates/{teammate_id}/signatures", {
-      teammate_id: teammateId,
+  async listTeammate(teammateId: string): Promise<OperationResponse<"list-teammate-signatures">> {
+    return await this.base.requestOperation("list-teammate-signatures", {
+      path: { teammate_id: teammateId },
     });
-    return await this.base.requestJson<WithNormalizedPagination<ListSignaturesResponse>>(
-      "GET",
-      path,
-    );
   }
 
-  /**
-   * Create a private signature for a teammate (`POST /teammates/{teammate_id}/signatures`).
-   *
-   * **Required scope:** `signatures:write`
-   *
-   * @param teammateId Teammate id or supported resource alias.
-   * @param body Create payload (OpenAPI {@link CreatePrivateSignature}).
+  /** POST /teammates/{teammate_id}/signatures
+   * Required scope: `signatures:write`
    * @see https://dev.frontapp.com/reference/create-teammate-signature
    */
-  async createTeammate(teammateId: string, body: CreatePrivateSignature): Promise<FrontSignatures> {
-    const path = FrontBase.expandPath("/teammates/{teammate_id}/signatures", {
-      teammate_id: teammateId,
-    });
-    const data = await this.base.requestJson<SignatureResponse>("POST", path, {
+  async createTeammate(
+    teammateId: string,
+    body: CreateSignatureTeammateParams,
+  ): Promise<OperationResponse<"create-teammate-signature">> {
+    return await this.base.requestOperation("create-teammate-signature", {
       body,
+      path: { teammate_id: teammateId },
     });
-    return new FrontSignatures(this.base, data);
   }
 
-  /**
-   * List signatures for a team/workspace (`GET /teams/{team_id}/signatures`).
-   *
-   * **Required scope:** `signatures:read`
-   *
-   * @param teamId Team id.
+  /** GET /teams/{team_id}/signatures
+   * Required scope: `signatures:read`
    * @see https://dev.frontapp.com/reference/list-team-signatures
    */
-  async listTeam(teamId: string): Promise<WithNormalizedPagination<ListSignaturesResponse>> {
-    const path = FrontBase.expandPath("/teams/{team_id}/signatures", {
-      team_id: teamId,
-    });
-    return await this.base.requestJson<WithNormalizedPagination<ListSignaturesResponse>>(
-      "GET",
-      path,
-    );
+  async listTeam(teamId: string): Promise<OperationResponse<"list-team-signatures">> {
+    return await this.base.requestOperation("list-team-signatures", { path: { team_id: teamId } });
   }
 
-  /**
-   * Create a shared signature for a team (`POST /teams/{team_id}/signatures`).
-   *
-   * **Required scope:** `signatures:write`
-   *
-   * @param teamId Team id.
-   * @param body Create payload (OpenAPI {@link CreateSharedSignature}).
+  /** POST /teams/{team_id}/signatures
+   * Required scope: `signatures:write`
    * @see https://dev.frontapp.com/reference/create-team-signature
    */
-  async createTeam(teamId: string, body: CreateSharedSignature): Promise<FrontSignatures> {
-    const path = FrontBase.expandPath("/teams/{team_id}/signatures", {
-      team_id: teamId,
-    });
-    const data = await this.base.requestJson<SignatureResponse>("POST", path, {
+  async createTeam(
+    teamId: string,
+    body: CreateSignatureTeamParams,
+  ): Promise<OperationResponse<"create-team-signature">> {
+    return await this.base.requestOperation("create-team-signature", {
       body,
+      path: { team_id: teamId },
     });
-    return new FrontSignatures(this.base, data);
   }
 }

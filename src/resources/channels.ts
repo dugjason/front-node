@@ -1,144 +1,86 @@
-import { FrontBase } from "../base";
+import type { FrontBase } from "../base";
 import type { components, operations } from "../gen/schema.gen";
-import type { WithNormalizedPagination } from "../normalize-response";
-import { FrontResource } from "../resource";
+import type { OperationResponse } from "../operation";
 
 export type ChannelResponse = components["schemas"]["ChannelResponse"];
-export type CreateChannel = components["schemas"]["CreateChannel"];
-export type UpdateChannel = components["schemas"]["UpdateChannel"];
-export type CreateDraft = components["schemas"]["CreateDraft"];
-export type CustomMessage = components["schemas"]["CustomMessage"];
-export type OutboundMessage = components["schemas"]["OutboundMessage"];
+export type CreateChannelParams =
+  operations["create-a-channel"]["requestBody"]["content"]["application/json"];
+export type UpdateChannelParams =
+  operations["update-channel"]["requestBody"]["content"]["application/json"];
+export type CreateChannelDraftParams =
+  operations["create-draft"]["requestBody"]["content"]["application/json"];
+export type ReceiveCustomMessageParams =
+  operations["receive-custom-messages"]["requestBody"]["content"]["application/json"];
+export type CreateChannelMessageParams =
+  operations["create-message"]["requestBody"]["content"]["application/json"];
 export type MessageResponse = components["schemas"]["MessageResponse"];
-
-type ListChannelsResponse =
-  operations["list-channels"]["responses"][200]["content"]["application/json"];
-
-type AcceptedMessageBody =
+export type ListChannelsResponse = OperationResponse<"list-channels">;
+export type AcceptedMessageResponse =
   operations["create-message"]["responses"][202]["content"]["application/json"];
-
-type AcceptedBody = operations["validate-channel"]["responses"][202]["content"]["application/json"];
-
-const mergeChannelSnapshot = (
-  current: ChannelResponse,
-  patch: Partial<UpdateChannel>,
-): ChannelResponse => {
-  const filtered = Object.fromEntries(
-    Object.entries(patch).filter(([, value]) => value !== undefined),
-  ) as Partial<UpdateChannel>;
-
-  let next: ChannelResponse = { ...current };
-  if (filtered.name !== undefined) {
-    next = { ...next, name: filtered.name };
-  }
-  if (filtered.settings !== undefined) {
-    next = {
-      ...next,
-      settings: { ...current.settings, ...filtered.settings },
-    };
-  }
-  return next;
-};
-
-const channelResponseToUpdateBody = (state: ChannelResponse): UpdateChannel => ({
-  name: state.name,
-  settings: state.settings,
-});
+export type ValidateChannelResponse =
+  operations["validate-channel"]["responses"][202]["content"]["application/json"];
 
 /**
- * One channel (`/channels/{channel_id}` and related message routes).
- *
- * Writable: `name`, `settings`. To move a channel to another inbox, call {@link update} with `{ inbox_id }` and then {@link refresh} (the GET response does not include `inbox_id`).
- * Read-only: `id`, `type`, `address`, `sendAs`, `isPrivate`, `isValid`, `links`.
- *
- * `PATCH /channels/{channel_id}` returns `204`; {@link update} and {@link save} merge the request into local state for fields that exist on {@link ChannelResponse}.
+ * Channel collection (`GET /channels`) and by-ID operations (`/channels/{channel_id}`).
+ * The Front API does not support deleting channels.
  *
  * @see https://dev.frontapp.com/reference/channels
  */
-export class FrontChannels extends FrontResource<ChannelResponse, UpdateChannel> {
-  protected selfPath(): string {
-    return FrontBase.expandPath("/channels/{channel_id}", {
-      channel_id: this.id,
+export class FrontChannels {
+  private readonly base: FrontBase;
+
+  constructor(base: FrontBase) {
+    this.base = base;
+  }
+
+  /**
+   * List channels (`GET /channels`).
+   *
+   * **Required scope:** `channels:read`
+   *
+   * @see https://dev.frontapp.com/reference/list-channels
+   */
+  async list(): Promise<ListChannelsResponse> {
+    return await this.base.requestOperation("list-channels");
+  }
+
+  /**
+   * Fetch one channel (`GET /channels/{channel_id}`).
+   *
+   * **Required scope:** `channels:read`
+   *
+   * @see https://dev.frontapp.com/reference/get-channel
+   */
+  async get(channelId: string): Promise<ChannelResponse> {
+    return await this.base.requestOperation("get-channel", { path: { channel_id: channelId } });
+  }
+
+  /**
+   * Create a channel in an inbox (`POST /inboxes/{inbox_id}/channels`). The API returns `204`.
+   *
+   * **Required scope:** `channels:write`
+   *
+   * @see https://dev.frontapp.com/reference/create-a-channel
+   */
+  async create(inboxId: string, body: CreateChannelParams): Promise<void> {
+    return await this.base.requestOperation("create-a-channel", {
+      body,
+      path: { inbox_id: inboxId },
     });
   }
 
-  get name(): string | undefined {
-    return this.pick("name");
-  }
-
-  set name(value: string | undefined) {
-    this.assign("name", value);
-  }
-
-  get settings(): ChannelResponse["settings"] {
-    return this.pick("settings");
-  }
-
-  set settings(value: ChannelResponse["settings"]) {
-    this.assign("settings", value);
-  }
-
-  get type(): ChannelResponse["type"] {
-    return this.pick("type");
-  }
-
-  get address(): string | undefined {
-    return this.pick("address");
-  }
-
-  get sendAs(): string | undefined {
-    return this.pick("send_as");
-  }
-
-  get isPrivate(): boolean {
-    return this.pick("is_private");
-  }
-
-  get isValid(): boolean {
-    return this.pick("is_valid");
-  }
-
   /**
-   * The Front API does not expose `DELETE /channels/{channel_id}`.
-   *
-   * @throws {Error} always — use the Front product or inbox channel management instead.
-   */
-  override delete(): Promise<void> {
-    return Promise.reject(
-      new Error(
-        `Deleting channel ${this.id} is not supported by the Front REST API for this path.`,
-      ),
-    );
-  }
-
-  /**
-   * Build the `PATCH` body implied by the current `name` and `settings`.
-   *
-   * @see https://dev.frontapp.com/reference/update-channel
-   */
-  toUpdateBody(): UpdateChannel {
-    return channelResponseToUpdateBody(this.state);
-  }
-
-  /**
-   * Update this channel (`PATCH /channels/{channel_id}`). The API returns `204`; local state is merged from the body.
+   * Update a channel (`PATCH /channels/{channel_id}`). The API returns `204`.
    *
    * **Required scope:** `channels:write`
    *
    * @see https://dev.frontapp.com/reference/update-channel
    */
-  async update(body: UpdateChannel | Partial<UpdateChannel>): Promise<void>;
-  async update(channelId: string, body: UpdateChannel | Partial<UpdateChannel>): Promise<void>;
-  async update(
-    channelIdOrBody: string | UpdateChannel | Partial<UpdateChannel>,
-    optionalBody?: UpdateChannel | Partial<UpdateChannel>,
-  ): Promise<void> {
-    const { body, id } = this.resolveIdAndBody(channelIdOrBody, optionalBody);
-    const path = FrontBase.expandPath("/channels/{channel_id}", { channel_id: id });
-    await this.base.requestJson<undefined>("PATCH", path, { body });
-    if (this.hasState() && id === this.id) {
-      this.replaceState(mergeChannelSnapshot(this.state, body));
-    }
+  async update(channelId: string, body: UpdateChannelParams): Promise<void> {
+    return await this.base.requestOperation("update-channel", {
+      body,
+      path: { channel_id: channelId },
+    });
   }
 
   /**
@@ -148,60 +90,44 @@ export class FrontChannels extends FrontResource<ChannelResponse, UpdateChannel>
    *
    * @see https://dev.frontapp.com/reference/create-draft
    */
-  async createDraft(body: CreateDraft): Promise<MessageResponse>;
-  async createDraft(channelId: string, body: CreateDraft): Promise<MessageResponse>;
-  async createDraft(
-    channelIdOrBody: string | CreateDraft,
-    optionalBody?: CreateDraft,
-  ): Promise<MessageResponse> {
-    const { body, id } = this.resolveIdAndBody(channelIdOrBody, optionalBody);
-    const path = FrontBase.expandPath("/channels/{channel_id}/drafts", {
-      channel_id: id,
+  async createDraft(channelId: string, body: CreateChannelDraftParams): Promise<MessageResponse> {
+    return await this.base.requestOperation("create-draft", {
+      body,
+      path: { channel_id: channelId },
     });
-    return await this.base.requestJson<MessageResponse>("POST", path, { body });
   }
 
   /**
-   * Receive a custom message (`POST /channels/{channel_id}/incoming_messages`). Custom channels only.
+   * Receive a custom message (`POST /channels/{channel_id}/incoming_messages`).
    *
    * **Required scope:** `messages:write`
    *
    * @see https://dev.frontapp.com/reference/receive-custom-messages
    */
-  async receiveCustomMessage(body: CustomMessage): Promise<AcceptedMessageBody>;
-  async receiveCustomMessage(channelId: string, body: CustomMessage): Promise<AcceptedMessageBody>;
   async receiveCustomMessage(
-    channelIdOrBody: string | CustomMessage,
-    optionalBody?: CustomMessage,
-  ): Promise<AcceptedMessageBody> {
-    const { body, id } = this.resolveIdAndBody(channelIdOrBody, optionalBody);
-    const path = FrontBase.expandPath("/channels/{channel_id}/incoming_messages", {
-      channel_id: id,
-    });
-    return await this.base.requestJson<AcceptedMessageBody>("POST", path, {
+    channelId: string,
+    body: ReceiveCustomMessageParams,
+  ): Promise<AcceptedMessageResponse> {
+    return await this.base.requestOperation("receive-custom-messages", {
       body,
+      path: { channel_id: channelId },
     });
   }
 
   /**
-   * Send a new message from this channel (`POST /channels/{channel_id}/messages`).
+   * Send a new message from a channel (`POST /channels/{channel_id}/messages`).
    *
    * **Required scope:** `messages:send`
    *
    * @see https://dev.frontapp.com/reference/create-message
    */
-  async createMessage(body: OutboundMessage): Promise<AcceptedMessageBody>;
-  async createMessage(channelId: string, body: OutboundMessage): Promise<AcceptedMessageBody>;
   async createMessage(
-    channelIdOrBody: string | OutboundMessage,
-    optionalBody?: OutboundMessage,
-  ): Promise<AcceptedMessageBody> {
-    const { body, id } = this.resolveIdAndBody(channelIdOrBody, optionalBody);
-    const path = FrontBase.expandPath("/channels/{channel_id}/messages", {
-      channel_id: id,
-    });
-    return await this.base.requestJson<AcceptedMessageBody>("POST", path, {
+    channelId: string,
+    body: CreateChannelMessageParams,
+  ): Promise<AcceptedMessageResponse> {
+    return await this.base.requestOperation("create-message", {
       body,
+      path: { channel_id: channelId },
     });
   }
 
@@ -212,68 +138,9 @@ export class FrontChannels extends FrontResource<ChannelResponse, UpdateChannel>
    *
    * @see https://dev.frontapp.com/reference/validate-channel
    */
-  async validate(channelId?: string): Promise<AcceptedBody> {
-    const id = channelId ?? this.id;
-    const path = FrontBase.expandPath("/channels/{channel_id}/validate", {
-      channel_id: id,
+  async validate(channelId: string): Promise<ValidateChannelResponse> {
+    return await this.base.requestOperation("validate-channel", {
+      path: { channel_id: channelId },
     });
-    return await this.base.requestJson<AcceptedBody>("POST", path);
-  }
-
-  /**
-   * List channels (`GET /channels`).
-   *
-   * **Required scope:** `channels:read`
-   *
-   * @see https://dev.frontapp.com/reference/list-channels
-   */
-  async list(): Promise<WithNormalizedPagination<ListChannelsResponse>> {
-    return await this.base.requestJson<WithNormalizedPagination<ListChannelsResponse>>(
-      "GET",
-      "/channels",
-    );
-  }
-
-  /**
-   * Fetch one channel (`GET /channels/{channel_id}`).
-   *
-   * **Required scope:** `channels:read`
-   *
-   * @param channelId Channel id or supported [resource alias](https://dev.frontapp.com/docs/resource-aliases-1) (e.g. channel address).
-   * @see https://dev.frontapp.com/reference/get-channel
-   */
-  async get(channelId: string): Promise<FrontChannels> {
-    const path = FrontBase.expandPath("/channels/{channel_id}", {
-      channel_id: channelId,
-    });
-    const data = await this.base.requestJson<ChannelResponse>("GET", path);
-    return new FrontChannels(this.base, data);
-  }
-
-  /**
-   * Create a channel in an inbox (`POST /inboxes/{inbox_id}/channels`). The API returns `204`.
-   *
-   * **Required scope:** `channels:write`
-   *
-   * @see https://dev.frontapp.com/reference/post_inboxes-inbox-id-channels
-   */
-  async create(inboxId: string, body: CreateChannel): Promise<void> {
-    const path = FrontBase.expandPath("/inboxes/{inbox_id}/channels", {
-      inbox_id: inboxId,
-    });
-    await this.base.requestJson<undefined>("POST", path, { body });
-  }
-
-  private resolveIdAndBody<TBody>(
-    idOrBody: string | TBody,
-    optionalBody: TBody | undefined,
-  ): { body: TBody; id: string } {
-    if (typeof idOrBody === "string") {
-      if (optionalBody === undefined) {
-        throw new Error("A request body is required.");
-      }
-      return { body: optionalBody, id: idOrBody };
-    }
-    return { body: idOrBody, id: this.id };
   }
 }

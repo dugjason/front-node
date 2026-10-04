@@ -1,615 +1,351 @@
-import { FrontBase } from "../base";
-import type { components, operations } from "../gen/schema.gen";
-import type { WithNormalizedPagination } from "../normalize-response";
-import { FrontInboxes } from "./inboxes";
-import type { CreateSharedSignature, SignatureResponse } from "./signatures";
-import { FrontSignatures } from "./signatures";
-import type { CreateTag, TagResponse } from "./tags";
-import { FrontTags } from "./tags";
-
-type CreateContact = components["schemas"]["CreateContact"];
-type CreateContactList = components["schemas"]["CreateContactList"];
-type ContactResponse = components["schemas"]["ContactResponse"];
+import type { FrontBase } from "../base";
+import type { OperationParams, OperationListParams, OperationResponse } from "../operation";
+import type { components } from "../gen/schema.gen";
 
 export type TeamResponse = components["schemas"]["TeamResponse"];
-export type CreateTeamInbox = components["schemas"]["CreateTeamInbox"];
-export type CreateMessageTemplateFolder = components["schemas"]["CreateMessageTemplateFolder"];
-export type CreateSharedMessageTemplate = components["schemas"]["CreateSharedMessageTemplate"];
-export type CreateShift = components["schemas"]["CreateShift"];
-export type CreateView = components["schemas"]["CreateView"];
 export type MessageTemplateResponse = components["schemas"]["MessageTemplateResponse"];
 export type MessageTemplateFolderResponse = components["schemas"]["MessageTemplateFolderResponse"];
 export type ShiftResponse = components["schemas"]["ShiftResponse"];
 export type SharedViewResponse = components["schemas"]["SharedViewResponse"];
 
-type ListTeamsResponse = operations["list-teams"]["responses"][200]["content"]["application/json"];
-
-type ListTeamChannelsResponse =
-  operations["list-team-channels"]["responses"][200]["content"]["application/json"];
-
-type ListTeamGroupsResponse =
-  operations["list-team-groups"]["responses"][200]["content"]["application/json"];
-
-type ListTeamContactListsResponse =
-  operations["list-team-contact-lists"]["responses"][200]["content"]["application/json"];
-
-type ListTeamContactsQuery = NonNullable<operations["list-team-contacts"]["parameters"]["query"]>;
-type ListTeamContactsResponse =
-  operations["list-team-contacts"]["responses"][200]["content"]["application/json"];
-
-type ListTeamInboxesResponse =
-  operations["list-team-inboxes"]["responses"][200]["content"]["application/json"];
-
-type ListTeamFoldersQuery = NonNullable<operations["list-team-folders"]["parameters"]["query"]>;
-type ListTeamFoldersResponse =
-  operations["list-team-folders"]["responses"][200]["content"]["application/json"];
-
-type ListTeamMessageTemplatesQuery = NonNullable<
-  operations["list-team-message-templates"]["parameters"]["query"]
+export type AddTeamTeammatesParams = NonNullable<OperationParams<"add-teammates-to-team">["body"]>;
+export type RemoveTeamTeammatesParams = NonNullable<
+  OperationParams<"remove-teammates-from-team">["body"]
 >;
-type ListTeamMessageTemplatesResponse =
-  operations["list-team-message-templates"]["responses"][200]["content"]["application/json"];
+export type CreateTeamContactListParams = NonNullable<
+  OperationParams<"create-team-contact-list">["body"]
+>;
+export type ListTeamContactsParams = OperationListParams<"list-team-contacts">;
+export type CreateTeamContactParams = NonNullable<OperationParams<"create-team-contact">["body"]>;
+export type ListTeamMessageTemplateFoldersParams = OperationListParams<"list-team-folders">;
+export type CreateTeamMessageTemplateFolderParams = NonNullable<
+  OperationParams<"create-team-folder">["body"]
+>;
+export type ListTeamMessageTemplatesParams = OperationListParams<"list-team-message-templates">;
+export type CreateTeamMessageTemplateParams = NonNullable<
+  OperationParams<"create-team-message-template">["body"]
+>;
+export type CreateTeamShiftParams = NonNullable<OperationParams<"create-team-shift">["body"]>;
+export type CreateTeamSignatureParams = NonNullable<
+  OperationParams<"create-team-signature">["body"]
+>;
+export type ListTeamTagsParams = OperationListParams<"list-team-tags">;
+export type CreateTeamTagParams = NonNullable<OperationParams<"create-team-tag">["body"]>;
+export type ListTeamViewsParams = OperationListParams<"list-team-views">;
+export type CreateTeamViewParams = NonNullable<OperationParams<"create-team-view">["body"]>;
 
-type ListTeamRulesResponse =
-  operations["list-team-rules"]["responses"][200]["content"]["application/json"];
+export type CreateTeamInboxParams = NonNullable<OperationParams<"create-team-inbox">["body"]>;
 
-type ListTeamShiftsResponse =
-  operations["list-team-shifts"]["responses"][200]["content"]["application/json"];
+export type ListTeamTimeOffsParams = OperationListParams<"list-team-time-offs">;
 
-type ListTeamSignaturesResponse =
-  operations["list-team-signatures"]["responses"][200]["content"]["application/json"];
-
-type ListTeamTagsQuery = NonNullable<operations["list-team-tags"]["parameters"]["query"]>;
-type ListTeamTagsResponse =
-  operations["list-team-tags"]["responses"][200]["content"]["application/json"];
-
-type ListTeamViewsQuery = NonNullable<operations["list-team-views"]["parameters"]["query"]>;
-type ListTeamViewsResponse =
-  operations["list-team-views"]["responses"][200]["content"]["application/json"];
-
-const queryFromListTeamContacts = (
-  q?: ListTeamContactsQuery,
-): Record<string, string | undefined> | undefined => {
-  if (!q) {
-    return;
-  }
-  const out: Record<string, string | undefined> = {};
-  if (q.q !== undefined) {
-    out.q = String(q.q);
-  }
-  if (q.limit !== undefined) {
-    out.limit = String(q.limit);
-  }
-  if (q.page_token !== undefined) {
-    out.page_token = String(q.page_token);
-  }
-  if (q.sort_by !== undefined) {
-    out.sort_by = String(q.sort_by);
-  }
-  if (q.sort_order !== undefined) {
-    out.sort_order = String(q.sort_order);
-  }
-  return out;
-};
-
-const queryFromListTeamFolders = (
-  q?: ListTeamFoldersQuery,
-): Record<string, string | undefined> | undefined => {
-  if (!q) {
-    return;
-  }
-  const out: Record<string, string | undefined> = {};
-  if (q.sort_by !== undefined) {
-    out.sort_by = String(q.sort_by);
-  }
-  if (q.sort_order !== undefined) {
-    out.sort_order = String(q.sort_order);
-  }
-  return out;
-};
-
-const queryFromListTeamMessageTemplates = (
-  q?: ListTeamMessageTemplatesQuery,
-): Record<string, string | undefined> | undefined => {
-  if (!q) {
-    return;
-  }
-  const out: Record<string, string | undefined> = {};
-  if (q.sort_by !== undefined) {
-    out.sort_by = String(q.sort_by);
-  }
-  if (q.sort_order !== undefined) {
-    out.sort_order = String(q.sort_order);
-  }
-  return out;
-};
-
-const queryFromListTeamTags = (
-  q?: ListTeamTagsQuery,
-): Record<string, string | undefined> | undefined => {
-  if (!q) {
-    return;
-  }
-  const out: Record<string, string | undefined> = {};
-  if (q.limit !== undefined) {
-    out.limit = String(q.limit);
-  }
-  if (q.page_token !== undefined) {
-    out.page_token = String(q.page_token);
-  }
-  if (q.sort_by !== undefined) {
-    out.sort_by = String(q.sort_by);
-  }
-  if (q.sort_order !== undefined) {
-    out.sort_order = String(q.sort_order);
-  }
-  return out;
-};
-
-const queryFromListTeamViews = (
-  q?: ListTeamViewsQuery,
-): Record<string, string | undefined> | undefined => {
-  if (!q) {
-    return;
-  }
-  const out: Record<string, string | undefined> = {};
-  if (q.limit !== undefined) {
-    out.limit = String(q.limit);
-  }
-  if (q.page_token !== undefined) {
-    out.page_token = String(q.page_token);
-  }
-  return out;
-};
-
-/**
- * One team / workspace (`GET /teams/{team_id}`). There is no team `PATCH` in the OpenAPI spec; use {@link refresh} after changes elsewhere.
- *
- * @see https://dev.frontapp.com/reference/teams
- */
+/** Collection operations returning Front response data. */
 export class FrontTeams {
-  private state: TeamResponse | undefined;
   private readonly base: FrontBase;
-  private readonly teamId: string | undefined;
 
-  constructor(base: FrontBase, snapshot?: TeamResponse, teamId?: string) {
+  constructor(base: FrontBase) {
     this.base = base;
-    this.state = snapshot === undefined ? undefined : structuredClone(snapshot);
-    this.teamId = teamId;
   }
 
-  get id(): string {
-    const id = this.state?.id ?? this.teamId;
-    if (id === undefined) {
-      throw new Error("This team operation requires an ID.");
-    }
-    return id;
-  }
-
-  get links(): TeamResponse["_links"] {
-    return this.requireState()._links;
-  }
-
-  /** Full team JSON from the last fetch. */
-  get data(): Readonly<TeamResponse> | undefined {
-    return this.state;
-  }
-
-  private requireState(): TeamResponse {
-    if (this.state === undefined) {
-      throw new Error("This team operation requires fetched resource data.");
-    }
-    return this.state;
-  }
-
-  private selfPath(): string {
-    return FrontBase.expandPath("/teams/{team_id}", { team_id: this.id });
-  }
-
-  /**
-   * Fetch team (`GET /teams/{team_id}`).
-   *
-   * **Required scope:** `teams:read`
+  /** GET /teams
+   * Required scope: `teams:read`
+   * @see https://dev.frontapp.com/reference/list-teams
    */
-  async refresh(): Promise<this> {
-    const next = await this.base.requestJson<TeamResponse>("GET", this.selfPath());
-    this.state = structuredClone(next);
-    return this;
+  async listTeams(): Promise<OperationResponse<"list-teams">> {
+    return await this.base.requestOperation("list-teams");
   }
 
-  /**
-   * List team channels (`GET /teams/{team_id}/channels`).
-   *
-   * **Required scope:** `channels:read`
+  /** GET /teams/{team_id}
+   * Required scope: `teams:read`
+   * @see https://dev.frontapp.com/reference/get-team
    */
-  async listChannels(): Promise<WithNormalizedPagination<ListTeamChannelsResponse>> {
-    const path = FrontBase.expandPath("/teams/{team_id}/channels", {
-      team_id: this.id,
+  async getTeam(teamId: string): Promise<OperationResponse<"get-team">> {
+    return await this.base.requestOperation("get-team", { path: { team_id: teamId } });
+  }
+
+  /** POST /teams/{team_id}/teammates
+   * Required scope: `teams:write`
+   * @see https://dev.frontapp.com/reference/add-teammates-to-team
+   */
+  async addTeammates(
+    teamId: string,
+    body: AddTeamTeammatesParams,
+  ): Promise<OperationResponse<"add-teammates-to-team">> {
+    return await this.base.requestOperation("add-teammates-to-team", {
+      body,
+      path: { team_id: teamId },
     });
-    return await this.base.requestJson<WithNormalizedPagination<ListTeamChannelsResponse>>(
-      "GET",
-      path,
-    );
   }
 
-  /**
-   * List contact groups (deprecated; `GET /teams/{team_id}/contact_groups`).
-   *
-   * **Required scope:** `contacts:read`
+  /** DELETE /teams/{team_id}/teammates
+   * Required scope: `teams:write`
+   * @see https://dev.frontapp.com/reference/remove-teammates-from-team
    */
-  async listContactGroups(): Promise<WithNormalizedPagination<ListTeamGroupsResponse>> {
-    const path = FrontBase.expandPath("/teams/{team_id}/contact_groups", {
-      team_id: this.id,
+  async removeTeammates(
+    teamId: string,
+    body?: RemoveTeamTeammatesParams,
+  ): Promise<OperationResponse<"remove-teammates-from-team">> {
+    return await this.base.requestOperation("remove-teammates-from-team", {
+      body,
+      path: { team_id: teamId },
     });
-    return await this.base.requestJson<WithNormalizedPagination<ListTeamGroupsResponse>>(
-      "GET",
-      path,
-    );
   }
 
-  /**
-   * Create a contact group (deprecated; `POST /teams/{team_id}/contact_groups`). The API returns `204`.
-   *
-   * **Required scope:** `contacts:write`
+  /** GET /teams/{team_id}/channels
+   * Required scope: `channels:read`
+   * @see https://dev.frontapp.com/reference/list-team-channels
    */
-  async createContactGroup(body: CreateContactList): Promise<void> {
-    const path = FrontBase.expandPath("/teams/{team_id}/contact_groups", {
-      team_id: this.id,
-    });
-    await this.base.requestJson<undefined>("POST", path, { body });
+  async listChannels(teamId: string): Promise<OperationResponse<"list-team-channels">> {
+    return await this.base.requestOperation("list-team-channels", { path: { team_id: teamId } });
   }
 
-  /**
-   * List contact lists (`GET /teams/{team_id}/contact_lists`).
-   *
-   * **Required scope:** `contacts:read`
+  /** GET /teams/{team_id}/contact_lists
+   * Required scope: `contacts:read`
+   * @see https://dev.frontapp.com/reference/list-team-contact-lists
    */
-  async listContactLists(): Promise<WithNormalizedPagination<ListTeamContactListsResponse>> {
-    const path = FrontBase.expandPath("/teams/{team_id}/contact_lists", {
-      team_id: this.id,
+  async listContactLists(teamId: string): Promise<OperationResponse<"list-team-contact-lists">> {
+    return await this.base.requestOperation("list-team-contact-lists", {
+      path: { team_id: teamId },
     });
-    return await this.base.requestJson<WithNormalizedPagination<ListTeamContactListsResponse>>(
-      "GET",
-      path,
-    );
   }
 
-  /**
-   * Create a contact list (`POST /teams/{team_id}/contact_lists`). The API returns `204`.
-   *
-   * **Required scope:** `contacts:write`
+  /** POST /teams/{team_id}/contact_lists
+   * Required scope: `contacts:write`
+   * @see https://dev.frontapp.com/reference/create-team-contact-list
    */
-  async createContactList(body: CreateContactList): Promise<void> {
-    const path = FrontBase.expandPath("/teams/{team_id}/contact_lists", {
-      team_id: this.id,
+  async createContactList(
+    teamId: string,
+    body: CreateTeamContactListParams,
+  ): Promise<OperationResponse<"create-team-contact-list">> {
+    return await this.base.requestOperation("create-team-contact-list", {
+      body,
+      path: { team_id: teamId },
     });
-    await this.base.requestJson<undefined>("POST", path, { body });
   }
 
-  /**
-   * List team contacts (`GET /teams/{team_id}/contacts`).
-   *
-   * **Required scope:** `contacts:read`
+  /** GET /teams/{team_id}/contacts
+   * Required scope: `contacts:read`
+   * @see https://dev.frontapp.com/reference/list-team-contacts
    */
   async listContacts(
-    query?: ListTeamContactsQuery,
-  ): Promise<WithNormalizedPagination<ListTeamContactsResponse>> {
-    const path = FrontBase.expandPath("/teams/{team_id}/contacts", {
-      team_id: this.id,
+    teamId: string,
+    params?: ListTeamContactsParams,
+  ): Promise<OperationResponse<"list-team-contacts">> {
+    return await this.base.requestOperation("list-team-contacts", {
+      nextPageUrl: params?.nextPageUrl,
+      path: { team_id: teamId },
+      query: params,
     });
-    return await this.base.requestJson<WithNormalizedPagination<ListTeamContactsResponse>>(
-      "GET",
-      path,
-      {
-        query: queryFromListTeamContacts(query),
-      },
-    );
   }
 
-  /**
-   * Create a team contact (`POST /teams/{team_id}/contacts`).
-   *
-   * **Required scope:** `contacts:write`
+  /** POST /teams/{team_id}/contacts
+   * Required scope: `contacts:write`
+   * @see https://dev.frontapp.com/reference/create-team-contact
    */
-  async createContact(body: CreateContact): Promise<ContactResponse> {
-    const path = FrontBase.expandPath("/teams/{team_id}/contacts", {
-      team_id: this.id,
+  async createContact(
+    teamId: string,
+    body: CreateTeamContactParams,
+  ): Promise<OperationResponse<"create-team-contact">> {
+    return await this.base.requestOperation("create-team-contact", {
+      body,
+      path: { team_id: teamId },
     });
-    return await this.base.requestJson<ContactResponse>("POST", path, { body });
   }
 
-  /**
-   * List team inboxes (`GET /teams/{team_id}/inboxes`).
-   *
-   * **Required scope:** `inboxes:read`
+  /** GET /teams/{team_id}/inboxes
+   * Required scope: `inboxes:read`
+   * @see https://dev.frontapp.com/reference/list-team-inboxes
    */
-  async listInboxes(): Promise<WithNormalizedPagination<ListTeamInboxesResponse>> {
-    const path = FrontBase.expandPath("/teams/{team_id}/inboxes", {
-      team_id: this.id,
-    });
-    return await this.base.requestJson<WithNormalizedPagination<ListTeamInboxesResponse>>(
-      "GET",
-      path,
-    );
+  async listInboxes(teamId: string): Promise<OperationResponse<"list-team-inboxes">> {
+    return await this.base.requestOperation("list-team-inboxes", { path: { team_id: teamId } });
   }
 
-  /**
-   * Create a team inbox (`POST /teams/{team_id}/inboxes`).
-   *
-   * **Required scope:** `inboxes:write`
-   */
-  async createInbox(body: CreateTeamInbox): Promise<FrontInboxes> {
-    const path = FrontBase.expandPath("/teams/{team_id}/inboxes", {
-      team_id: this.id,
-    });
-    const data = await this.base.requestJson<
-      operations["create-team-inbox"]["responses"][201]["content"]["application/json"]
-    >("POST", path, { body });
-    return new FrontInboxes(this.base, data);
-  }
-
-  /**
-   * List message template folders (`GET /teams/{team_id}/message_template_folders`).
-   *
-   * **Required scope:** `message_templates:read`
+  /** GET /teams/{team_id}/message_template_folders
+   * Required scope: `message_templates:read`
+   * @see https://dev.frontapp.com/reference/list-team-folders
    */
   async listMessageTemplateFolders(
-    query?: ListTeamFoldersQuery,
-  ): Promise<WithNormalizedPagination<ListTeamFoldersResponse>> {
-    const path = FrontBase.expandPath("/teams/{team_id}/message_template_folders", {
-      team_id: this.id,
+    teamId: string,
+    params?: ListTeamMessageTemplateFoldersParams,
+  ): Promise<OperationResponse<"list-team-folders">> {
+    return await this.base.requestOperation("list-team-folders", {
+      path: { team_id: teamId },
+      query: params,
     });
-    return await this.base.requestJson<WithNormalizedPagination<ListTeamFoldersResponse>>(
-      "GET",
-      path,
-      {
-        query: queryFromListTeamFolders(query),
-      },
-    );
   }
 
-  /**
-   * Create a message template folder (`POST /teams/{team_id}/message_template_folders`).
-   *
-   * **Required scope:** `message_templates:write`
+  /** POST /teams/{team_id}/message_template_folders
+   * Required scope: `message_templates:write`
+   * @see https://dev.frontapp.com/reference/create-team-folder
    */
   async createMessageTemplateFolder(
-    body: CreateMessageTemplateFolder,
-  ): Promise<MessageTemplateFolderResponse> {
-    const path = FrontBase.expandPath("/teams/{team_id}/message_template_folders", {
-      team_id: this.id,
+    teamId: string,
+    body: CreateTeamMessageTemplateFolderParams,
+  ): Promise<OperationResponse<"create-team-folder">> {
+    return await this.base.requestOperation("create-team-folder", {
+      body,
+      path: { team_id: teamId },
     });
-    return await this.base.requestJson<MessageTemplateFolderResponse>("POST", path, { body });
   }
 
-  /**
-   * List message templates (`GET /teams/{team_id}/message_templates`).
-   *
-   * **Required scope:** `message_templates:read`
+  /** GET /teams/{team_id}/message_templates
+   * Required scope: `message_templates:read`
+   * @see https://dev.frontapp.com/reference/list-team-message-templates
    */
   async listMessageTemplates(
-    query?: ListTeamMessageTemplatesQuery,
-  ): Promise<WithNormalizedPagination<ListTeamMessageTemplatesResponse>> {
-    const path = FrontBase.expandPath("/teams/{team_id}/message_templates", {
-      team_id: this.id,
+    teamId: string,
+    params?: ListTeamMessageTemplatesParams,
+  ): Promise<OperationResponse<"list-team-message-templates">> {
+    return await this.base.requestOperation("list-team-message-templates", {
+      path: { team_id: teamId },
+      query: params,
     });
-    return await this.base.requestJson<WithNormalizedPagination<ListTeamMessageTemplatesResponse>>(
-      "GET",
-      path,
-      {
-        query: queryFromListTeamMessageTemplates(query),
-      },
-    );
   }
 
-  /**
-   * Create a message template (`POST /teams/{team_id}/message_templates`).
-   *
-   * **Required scope:** `message_templates:write`
+  /** POST /teams/{team_id}/message_templates
+   * Required scope: `message_templates:write`
+   * @see https://dev.frontapp.com/reference/create-team-message-template
    */
-  async createMessageTemplate(body: CreateSharedMessageTemplate): Promise<MessageTemplateResponse> {
-    const path = FrontBase.expandPath("/teams/{team_id}/message_templates", {
-      team_id: this.id,
-    });
-    return await this.base.requestJson<MessageTemplateResponse>("POST", path, {
+  async createMessageTemplate(
+    teamId: string,
+    body: CreateTeamMessageTemplateParams,
+  ): Promise<OperationResponse<"create-team-message-template">> {
+    return await this.base.requestOperation("create-team-message-template", {
       body,
+      path: { team_id: teamId },
     });
   }
 
-  /**
-   * List team rules (`GET /teams/{team_id}/rules`).
-   *
-   * **Required scope:** `rules:read`
+  /** GET /teams/{team_id}/rules
+   * Required scope: `rules:read`
+   * @see https://dev.frontapp.com/reference/list-team-rules
    */
-  async listRules(): Promise<WithNormalizedPagination<ListTeamRulesResponse>> {
-    const path = FrontBase.expandPath("/teams/{team_id}/rules", {
-      team_id: this.id,
-    });
-    return await this.base.requestJson<WithNormalizedPagination<ListTeamRulesResponse>>(
-      "GET",
-      path,
-    );
+  async listRules(teamId: string): Promise<OperationResponse<"list-team-rules">> {
+    return await this.base.requestOperation("list-team-rules", { path: { team_id: teamId } });
   }
 
-  /**
-   * List team shifts (`GET /teams/{team_id}/shifts`).
-   *
-   * **Required scope:** `shifts:read`
+  /** GET /teams/{team_id}/shifts
+   * Required scope: `shifts:read`
+   * @see https://dev.frontapp.com/reference/list-team-shifts
    */
-  async listShifts(): Promise<WithNormalizedPagination<ListTeamShiftsResponse>> {
-    const path = FrontBase.expandPath("/teams/{team_id}/shifts", {
-      team_id: this.id,
-    });
-    return await this.base.requestJson<WithNormalizedPagination<ListTeamShiftsResponse>>(
-      "GET",
-      path,
-    );
+  async listShifts(teamId: string): Promise<OperationResponse<"list-team-shifts">> {
+    return await this.base.requestOperation("list-team-shifts", { path: { team_id: teamId } });
   }
 
-  /**
-   * Create a team shift (`POST /teams/{team_id}/shifts`).
-   *
-   * **Required scope:** `shifts:write`
+  /** POST /teams/{team_id}/shifts
+   * Required scope: `shifts:write`
+   * @see https://dev.frontapp.com/reference/create-team-shift
    */
-  async createShift(body: CreateShift): Promise<ShiftResponse> {
-    const path = FrontBase.expandPath("/teams/{team_id}/shifts", {
-      team_id: this.id,
-    });
-    return await this.base.requestJson<ShiftResponse>("POST", path, { body });
-  }
-
-  /**
-   * List team signatures (`GET /teams/{team_id}/signatures`).
-   *
-   * **Required scope:** `signatures:read`
-   */
-  async listSignatures(): Promise<WithNormalizedPagination<ListTeamSignaturesResponse>> {
-    const path = FrontBase.expandPath("/teams/{team_id}/signatures", {
-      team_id: this.id,
-    });
-    return await this.base.requestJson<WithNormalizedPagination<ListTeamSignaturesResponse>>(
-      "GET",
-      path,
-    );
-  }
-
-  /**
-   * Create a shared team signature (`POST /teams/{team_id}/signatures`).
-   *
-   * **Required scope:** `signatures:write`
-   */
-  async createSignature(body: CreateSharedSignature): Promise<FrontSignatures> {
-    const path = FrontBase.expandPath("/teams/{team_id}/signatures", {
-      team_id: this.id,
-    });
-    const data = await this.base.requestJson<SignatureResponse>("POST", path, {
+  async createShift(
+    teamId: string,
+    body: CreateTeamShiftParams,
+  ): Promise<OperationResponse<"create-team-shift">> {
+    return await this.base.requestOperation("create-team-shift", {
       body,
+      path: { team_id: teamId },
     });
-    return new FrontSignatures(this.base, data);
   }
 
-  /**
-   * List team tags (`GET /teams/{team_id}/tags`).
-   *
-   * **Required scope:** `tags:read`
+  /** GET /teams/{team_id}/signatures
+   * Required scope: `signatures:read`
+   * @see https://dev.frontapp.com/reference/list-team-signatures
+   */
+  async listSignatures(teamId: string): Promise<OperationResponse<"list-team-signatures">> {
+    return await this.base.requestOperation("list-team-signatures", { path: { team_id: teamId } });
+  }
+
+  /** POST /teams/{team_id}/signatures
+   * Required scope: `signatures:write`
+   * @see https://dev.frontapp.com/reference/create-team-signature
+   */
+  async createSignature(
+    teamId: string,
+    body: CreateTeamSignatureParams,
+  ): Promise<OperationResponse<"create-team-signature">> {
+    return await this.base.requestOperation("create-team-signature", {
+      body,
+      path: { team_id: teamId },
+    });
+  }
+
+  /** GET /teams/{team_id}/tags
+   * Required scope: `tags:read`
+   * @see https://dev.frontapp.com/reference/list-team-tags
    */
   async listTags(
-    query?: ListTeamTagsQuery,
-  ): Promise<WithNormalizedPagination<ListTeamTagsResponse>> {
-    const path = FrontBase.expandPath("/teams/{team_id}/tags", {
-      team_id: this.id,
+    teamId: string,
+    params?: ListTeamTagsParams,
+  ): Promise<OperationResponse<"list-team-tags">> {
+    return await this.base.requestOperation("list-team-tags", {
+      nextPageUrl: params?.nextPageUrl,
+      path: { team_id: teamId },
+      query: params,
     });
-    return await this.base.requestJson<WithNormalizedPagination<ListTeamTagsResponse>>(
-      "GET",
-      path,
-      {
-        query: queryFromListTeamTags(query),
-      },
-    );
   }
 
-  /**
-   * Create a team tag (`POST /teams/{team_id}/tags`).
-   *
-   * **Required scope:** `tags:write`
+  /** POST /teams/{team_id}/tags
+   * Required scope: `tags:write`
+   * @see https://dev.frontapp.com/reference/create-team-tag
    */
-  async createTag(body: CreateTag): Promise<FrontTags> {
-    const path = FrontBase.expandPath("/teams/{team_id}/tags", {
-      team_id: this.id,
-    });
-    const data = await this.base.requestJson<TagResponse>("POST", path, {
-      body,
-    });
-    return new FrontTags(this.base, data);
+  async createTag(
+    teamId: string,
+    body: CreateTeamTagParams,
+  ): Promise<OperationResponse<"create-team-tag">> {
+    return await this.base.requestOperation("create-team-tag", { body, path: { team_id: teamId } });
   }
 
-  /**
-   * Add teammates to the team (`POST /teams/{team_id}/teammates`). The API returns `204`.
-   *
-   * **Required scope:** `teams:write`
-   */
-  async addTeammates(body: components["schemas"]["TeammateIds"]): Promise<void> {
-    const path = FrontBase.expandPath("/teams/{team_id}/teammates", {
-      team_id: this.id,
-    });
-    await this.base.requestJson<undefined>("POST", path, { body });
-  }
-
-  /**
-   * Remove teammates from the team (`DELETE /teams/{team_id}/teammates`). The API returns `204`.
-   *
-   * **Required scope:** `teams:write`
-   */
-  async removeTeammates(body: components["schemas"]["TeammateIds"]): Promise<void> {
-    const path = FrontBase.expandPath("/teams/{team_id}/teammates", {
-      team_id: this.id,
-    });
-    await this.base.requestJson<undefined>("DELETE", path, { body });
-  }
-
-  /**
-   * List team views (`GET /teams/{team_id}/views`).
-   *
-   * **Required scope:** `views:read`
+  /** GET /teams/{team_id}/views
+   * Required scope: `views:read`
+   * @see https://dev.frontapp.com/reference/list-team-views
    */
   async listViews(
-    query?: ListTeamViewsQuery,
-  ): Promise<WithNormalizedPagination<ListTeamViewsResponse>> {
-    const path = FrontBase.expandPath("/teams/{team_id}/views", {
-      team_id: this.id,
+    teamId: string,
+    params?: ListTeamViewsParams,
+  ): Promise<OperationResponse<"list-team-views">> {
+    return await this.base.requestOperation("list-team-views", {
+      nextPageUrl: params?.nextPageUrl,
+      path: { team_id: teamId },
+      query: params,
     });
-    return await this.base.requestJson<WithNormalizedPagination<ListTeamViewsResponse>>(
-      "GET",
-      path,
-      {
-        query: queryFromListTeamViews(query),
-      },
-    );
   }
 
-  /**
-   * Create a team view (`POST /teams/{team_id}/views`).
-   *
-   * **Required scope:** `views:write`
+  /** POST /teams/{team_id}/views
+   * Required scope: `views:write`
+   * @see https://dev.frontapp.com/reference/create-team-view
    */
-  async createView(body: CreateView): Promise<SharedViewResponse> {
-    const path = FrontBase.expandPath("/teams/{team_id}/views", {
-      team_id: this.id,
-    });
-    return await this.base.requestJson<SharedViewResponse>("POST", path, {
+  async createView(
+    teamId: string,
+    body: CreateTeamViewParams,
+  ): Promise<OperationResponse<"create-team-view">> {
+    return await this.base.requestOperation("create-team-view", {
       body,
+      path: { team_id: teamId },
     });
   }
-  /**
-   * Teams / workspaces (`GET /teams`, `GET /teams/{team_id}`) and ID-bound sub-routes.
-   *
-   * @see https://dev.frontapp.com/reference/teams
+  /** POST /teams/{team_id}/inboxes
+   * Required scope: `inboxes:write`
+   * @see https://dev.frontapp.com/reference/create-team-inbox
    */
-  /**
-   * List teams (`GET /teams`).
-   *
-   * **Required scope:** `teams:read`
-   */
-  async listTeams(): Promise<WithNormalizedPagination<ListTeamsResponse>> {
-    return await this.base.requestJson<WithNormalizedPagination<ListTeamsResponse>>(
-      "GET",
-      "/teams",
-    );
+  async createInbox(
+    teamId: string,
+    body: CreateTeamInboxParams,
+  ): Promise<OperationResponse<"create-team-inbox">> {
+    return await this.base.requestOperation("create-team-inbox", {
+      body,
+      path: { team_id: teamId },
+    });
   }
-
-  /**
-   * Fetch one team (`GET /teams/{team_id}`).
-   *
-   * **Required scope:** `teams:read`
+  /** GET /teams/{team_id}/time_offs
+   * Required scope: `time_off:read`
+   * @see https://dev.frontapp.com/reference/list-team-time-offs
    */
-  async getTeam(teamId: string): Promise<FrontTeams> {
-    const team = this.target(teamId);
-    await team.refresh();
-    return team;
-  }
-
-  /** Target a team by id without calling the API first. */
-  private target(teamId: string): FrontTeams {
-    return new FrontTeams(this.base, undefined, teamId);
+  async listTimeOffs(
+    teamId: string,
+    params?: ListTeamTimeOffsParams,
+  ): Promise<OperationResponse<"list-team-time-offs">> {
+    return await this.base.requestOperation("list-team-time-offs", {
+      nextPageUrl: params?.nextPageUrl,
+      path: { team_id: teamId },
+      query: params,
+    });
   }
 }

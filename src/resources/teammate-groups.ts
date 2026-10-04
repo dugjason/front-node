@@ -1,341 +1,213 @@
-import { FrontBase } from "../base";
-import type { components, operations } from "../gen/schema.gen";
-import type { WithNormalizedPagination } from "../normalize-response";
-import { FrontResource } from "../resource";
-import { FrontTeammates } from "./teammates";
+import type { FrontBase } from "../base";
+import type { OperationParams, OperationResponse } from "../operation";
+import type { components } from "../gen/schema.gen";
 
 export type TeammateGroupResponse = components["schemas"]["TeammateGroupResponse"];
-export type CreateTeammateGroup = components["schemas"]["CreateTeammateGroup"];
-export type UpdateTeammateGroup = components["schemas"]["UpdateTeammateGroup"];
 
-type ListTeammateGroupsResponse =
-  operations["list-company-teammate-groups"]["responses"][200]["content"]["application/json"];
+export type CreateTeammateGroupParams = NonNullable<
+  OperationParams<"create-company-teammate-group">["body"]
+>;
+export type UpdateTeammateGroupParams = NonNullable<
+  OperationParams<"update-a-company-teammate-group">["body"]
+>;
+export type AddTeammateGroupInboxesParams = NonNullable<
+  OperationParams<"add-company-teammate-group-team-inboxes">["body"]
+>;
+export type RemoveTeammateGroupInboxesParams = NonNullable<
+  OperationParams<"remove-company-teammate-group-team-inboxes">["body"]
+>;
+export type AddTeammateGroupTeammatesParams = NonNullable<
+  OperationParams<"add-company-teammate-group-teammates">["body"]
+>;
+export type RemoveTeammateGroupTeammatesParams = NonNullable<
+  OperationParams<"remove-company-teammate-group-teammates">["body"]
+>;
+export type AddTeammateGroupTeamsParams = NonNullable<
+  OperationParams<"add-company-teammate-group-teams">["body"]
+>;
+export type RemoveTeammateGroupTeamsParams = NonNullable<
+  OperationParams<"remove-company-teammate-group-teams">["body"]
+>;
 
-type ListTeammateGroupInboxesResponse =
-  operations["list-company-teammate-group-team-inboxes"]["responses"][200]["content"]["application/json"];
+/** Collection operations returning Front response data. */
+export class FrontTeammateGroups {
+  private readonly base: FrontBase;
 
-type ListTeammateGroupTeammatesResponse =
-  operations["list-company-teammate-group-teammates"]["responses"][200]["content"]["application/json"];
-
-type ListTeammateGroupTeamsResponse =
-  operations["list-company-teammate-group-teams"]["responses"][200]["content"]["application/json"];
-
-const mergeTeammateGroupSnapshot = (
-  current: TeammateGroupResponse,
-  patch: Partial<UpdateTeammateGroup>,
-): TeammateGroupResponse => {
-  const { permissions: patchPermissions, ...restPatch } = patch;
-  const filteredRest = Object.fromEntries(
-    Object.entries(restPatch).filter(([, value]) => value !== undefined),
-  ) as Partial<Omit<UpdateTeammateGroup, "permissions">>;
-  let next: TeammateGroupResponse = { ...current, ...filteredRest };
-  if (patchPermissions !== undefined) {
-    const patchContacts = patchPermissions.contacts;
-    const currentContacts = current.permissions.contacts;
-    next = {
-      ...next,
-      permissions: {
-        ...current.permissions,
-        ...patchPermissions,
-        contacts:
-          patchContacts === undefined
-            ? currentContacts
-            : {
-                ...currentContacts,
-                ...patchContacts,
-              },
-      },
-    };
-  }
-  return next;
-};
-
-const permissionsToUpdateBody = (
-  permissions: TeammateGroupResponse["permissions"],
-): UpdateTeammateGroup["permissions"] | undefined => {
-  const c = permissions.contacts;
-  if (c === undefined) {
-    return;
-  }
-  const { access } = c;
-  if (access === undefined) {
-    return;
-  }
-  const contacts: NonNullable<UpdateTeammateGroup["permissions"]>["contacts"] = { access };
-  if (c.contact_list_ids !== undefined) {
-    contacts.contact_list_ids = c.contact_list_ids;
-  }
-  return { contacts };
-};
-
-const teammateGroupResponseToUpdateBody = (state: TeammateGroupResponse): UpdateTeammateGroup => {
-  const body: UpdateTeammateGroup = { name: state.name };
-  if (state.description !== null) {
-    body.description = state.description;
-  }
-  const permissions = permissionsToUpdateBody(state.permissions);
-  if (permissions !== undefined) {
-    body.permissions = permissions;
-  }
-  return body;
-};
-
-/**
- * One company teammate group (`/teammate_groups/{teammate_group_id}` and related routes).
- *
- * Writable: `name`, `description`, `permissions`. Read-only: `id`, `isManagedByScim`, `links`.
- * `PATCH` returns `204`; {@link update} and {@link save} merge the request into local state.
- *
- * @see https://dev.frontapp.com/reference/teammate-groups
- */
-export class FrontTeammateGroups extends FrontResource<TeammateGroupResponse, UpdateTeammateGroup> {
-  protected selfPath(): string {
-    return FrontBase.expandPath("/teammate_groups/{teammate_group_id}", {
-      teammate_group_id: this.id,
-    });
+  constructor(base: FrontBase) {
+    this.base = base;
   }
 
-  get name(): string {
-    return this.pick("name");
-  }
-
-  set name(value: string) {
-    this.assign("name", value);
-  }
-
-  get description(): string | null {
-    return this.pick("description");
-  }
-
-  set description(value: string | null) {
-    this.assign("description", value);
-  }
-
-  get isManagedByScim(): boolean {
-    return this.pick("is_managed_by_scim");
-  }
-
-  get permissions(): TeammateGroupResponse["permissions"] {
-    return this.pick("permissions");
-  }
-
-  set permissions(value: TeammateGroupResponse["permissions"]) {
-    this.assign("permissions", value);
-  }
-
-  toUpdateBody(): UpdateTeammateGroup {
-    return teammateGroupResponseToUpdateBody(this.state);
-  }
-
-  /**
-   * Update this teammate group (`PATCH /teammate_groups/{teammate_group_id}`). Returns `204`; local state is merged.
-   *
-   * **Required scope:** `teammate_groups:write`
-   *
-   * @see https://dev.frontapp.com/reference/update-a-company-teammate-group
-   */
-  async update(body: UpdateTeammateGroup | Partial<UpdateTeammateGroup>): Promise<void>;
-  async update(
-    teammateGroupId: string,
-    body: UpdateTeammateGroup | Partial<UpdateTeammateGroup>,
-  ): Promise<void>;
-  async update(
-    bodyOrTeammateGroupId: string | UpdateTeammateGroup | Partial<UpdateTeammateGroup>,
-    body?: UpdateTeammateGroup | Partial<UpdateTeammateGroup>,
-  ): Promise<void> {
-    if (typeof bodyOrTeammateGroupId === "string") {
-      if (body === undefined) {
-        throw new Error("Updating a teammate group by ID requires a request body.");
-      }
-      await this.target(bodyOrTeammateGroupId).update(body);
-      return;
-    }
-    await this.patchNoContent(bodyOrTeammateGroupId, mergeTeammateGroupSnapshot);
-  }
-
-  /**
-   * List inboxes this group can access via its teams (`GET /teammate_groups/{teammate_group_id}/inboxes`).
-   *
-   * **Required scope:** `teammate_groups:read`
-   *
-   * @see https://dev.frontapp.com/reference/list-company-teammate-group-team-inboxes
-   */
-  async listInboxes(): Promise<WithNormalizedPagination<ListTeammateGroupInboxesResponse>> {
-    const path = FrontBase.expandPath("/teammate_groups/{teammate_group_id}/inboxes", {
-      teammate_group_id: this.id,
-    });
-    return await this.base.requestJson<WithNormalizedPagination<ListTeammateGroupInboxesResponse>>(
-      "GET",
-      path,
-    );
-  }
-
-  /**
-   * Link non-public inboxes (`POST /teammate_groups/{teammate_group_id}/inboxes`).
-   *
-   * **Required scope:** `teammate_groups:write`
-   *
-   * @see https://dev.frontapp.com/reference/add-company-teammate-group-team-inboxes
-   */
-  async addInboxes(body: components["schemas"]["InboxIds"]): Promise<void> {
-    const path = FrontBase.expandPath("/teammate_groups/{teammate_group_id}/inboxes", {
-      teammate_group_id: this.id,
-    });
-    await this.base.requestJson<undefined>("POST", path, { body });
-  }
-
-  /**
-   * Unlink non-public inboxes (`DELETE /teammate_groups/{teammate_group_id}/inboxes`).
-   *
-   * **Required scope:** `teammate_groups:write`
-   *
-   * @see https://dev.frontapp.com/reference/remove-company-teammate-group-team-inboxes
-   */
-  async removeInboxes(body: components["schemas"]["InboxIds"]): Promise<void> {
-    const path = FrontBase.expandPath("/teammate_groups/{teammate_group_id}/inboxes", {
-      teammate_group_id: this.id,
-    });
-    await this.base.requestJson<undefined>("DELETE", path, { body });
-  }
-
-  /**
-   * List teammates in the group (`GET /teammate_groups/{teammate_group_id}/teammates`).
-   *
-   * **Required scope:** `teammate_groups:read`
-   *
-   * @see https://dev.frontapp.com/reference/list-company-teammate-group-teammates
-   */
-  async listTeammates(): Promise<FrontTeammates[]> {
-    const path = FrontBase.expandPath("/teammate_groups/{teammate_group_id}/teammates", {
-      teammate_group_id: this.id,
-    });
-    const json = await this.base.requestJson<
-      WithNormalizedPagination<ListTeammateGroupTeammatesResponse>
-    >("GET", path);
-    const results = json._results ?? [];
-    return results.map((row) => new FrontTeammates(this.base, row));
-  }
-
-  /**
-   * Add teammates (`POST /teammate_groups/{teammate_group_id}/teammates`).
-   *
-   * **Required scope:** `teammate_groups:write`
-   *
-   * @see https://dev.frontapp.com/reference/add-company-teammate-group-teammates
-   */
-  async addTeammates(body: components["schemas"]["TeammateIds"]): Promise<void> {
-    const path = FrontBase.expandPath("/teammate_groups/{teammate_group_id}/teammates", {
-      teammate_group_id: this.id,
-    });
-    await this.base.requestJson<undefined>("POST", path, { body });
-  }
-
-  /**
-   * Remove teammates (`DELETE /teammate_groups/{teammate_group_id}/teammates`).
-   *
-   * **Required scope:** `teammate_groups:write`
-   *
-   * @see https://dev.frontapp.com/reference/remove-company-teammate-group-teammates
-   */
-  async removeTeammates(body: components["schemas"]["TeammateIds"]): Promise<void> {
-    const path = FrontBase.expandPath("/teammate_groups/{teammate_group_id}/teammates", {
-      teammate_group_id: this.id,
-    });
-    await this.base.requestJson<undefined>("DELETE", path, { body });
-  }
-
-  /**
-   * List teams on the group (`GET /teammate_groups/{teammate_group_id}/teams`).
-   *
-   * **Required scope:** `teammate_groups:read`
-   *
-   * @see https://dev.frontapp.com/reference/list-company-teammate-group-teams
-   */
-  async listTeams(): Promise<WithNormalizedPagination<ListTeammateGroupTeamsResponse>> {
-    const path = FrontBase.expandPath("/teammate_groups/{teammate_group_id}/teams", {
-      teammate_group_id: this.id,
-    });
-    return await this.base.requestJson<WithNormalizedPagination<ListTeammateGroupTeamsResponse>>(
-      "GET",
-      path,
-    );
-  }
-
-  /**
-   * Add teams (`POST /teammate_groups/{teammate_group_id}/teams`).
-   *
-   * **Required scope:** `teammate_groups:write`
-   *
-   * @see https://dev.frontapp.com/reference/add-company-teammate-group-teams
-   */
-  async addTeams(body: components["schemas"]["TeamIds"]): Promise<void> {
-    const path = FrontBase.expandPath("/teammate_groups/{teammate_group_id}/teams", {
-      teammate_group_id: this.id,
-    });
-    await this.base.requestJson<undefined>("POST", path, { body });
-  }
-
-  /**
-   * Remove teams (`DELETE /teammate_groups/{teammate_group_id}/teams`).
-   *
-   * **Required scope:** `teammate_groups:write`
-   *
-   * @see https://dev.frontapp.com/reference/remove-company-teammate-group-teams
-   */
-  async removeTeams(body: components["schemas"]["TeamIds"]): Promise<void> {
-    const path = FrontBase.expandPath("/teammate_groups/{teammate_group_id}/teams", {
-      teammate_group_id: this.id,
-    });
-    await this.base.requestJson<undefined>("DELETE", path, { body });
-  }
-  /**
-   * Company teammate groups under `/teammate_groups`.
-   *
-   * @see https://dev.frontapp.com/reference/teammate-groups
-   */
-  /**
-   * List teammate groups (`GET /teammate_groups`).
-   *
-   * **Required scope:** `teammate_groups:read`
-   *
+  /** GET /teammate_groups
+   * Required scope: `teammate_groups:read`
    * @see https://dev.frontapp.com/reference/list-company-teammate-groups
    */
-  async list(): Promise<WithNormalizedPagination<ListTeammateGroupsResponse>> {
-    return await this.base.requestJson<WithNormalizedPagination<ListTeammateGroupsResponse>>(
-      "GET",
-      "/teammate_groups",
-    );
+  async list(): Promise<OperationResponse<"list-company-teammate-groups">> {
+    return await this.base.requestOperation("list-company-teammate-groups");
   }
 
-  /**
-   * Create a teammate group (`POST /teammate_groups`).
-   *
-   * **Required scope:** `teammate_groups:write`
-   *
+  /** POST /teammate_groups
+   * Required scope: `teammate_groups:write`
    * @see https://dev.frontapp.com/reference/create-company-teammate-group
    */
-  async create(body: CreateTeammateGroup): Promise<FrontTeammateGroups> {
-    const data = await this.base.requestJson<TeammateGroupResponse>("POST", "/teammate_groups", {
-      body,
-    });
-    return new FrontTeammateGroups(this.base, data);
+  async create(
+    body: CreateTeammateGroupParams,
+  ): Promise<OperationResponse<"create-company-teammate-group">> {
+    return await this.base.requestOperation("create-company-teammate-group", { body });
   }
 
-  /**
-   * Fetch one teammate group (`GET /teammate_groups/{teammate_group_id}`).
-   *
-   * **Required scope:** `teammate_groups:read`
-   *
+  /** GET /teammate_groups/{teammate_group_id}
+   * Required scope: `teammate_groups:read`
    * @see https://dev.frontapp.com/reference/get-company-teammate-group
    */
-  async get(teammateGroupId: string): Promise<FrontTeammateGroups> {
-    const teammateGroup = this.target(teammateGroupId);
-    await teammateGroup.refresh();
-    return teammateGroup;
+  async get(teammateGroupId: string): Promise<OperationResponse<"get-company-teammate-group">> {
+    return await this.base.requestOperation("get-company-teammate-group", {
+      path: { teammate_group_id: teammateGroupId },
+    });
   }
 
-  /** Target a teammate group by id without calling the API first. */
-  private target(teammateGroupId: string): FrontTeammateGroups {
-    return new FrontTeammateGroups(this.base, undefined, teammateGroupId);
+  /** PATCH /teammate_groups/{teammate_group_id}
+   * Required scope: `teammate_groups:write`
+   * @see https://dev.frontapp.com/reference/update-a-company-teammate-group
+   */
+  async update(
+    teammateGroupId: string,
+    body: UpdateTeammateGroupParams,
+  ): Promise<OperationResponse<"update-a-company-teammate-group">> {
+    return await this.base.requestOperation("update-a-company-teammate-group", {
+      body,
+      path: { teammate_group_id: teammateGroupId },
+    });
+  }
+
+  /** DELETE /teammate_groups/{teammate_group_id}
+   * Required scope: `teammate_groups:delete`
+   * @see https://dev.frontapp.com/reference/delete-company-teammate-group
+   */
+  async delete(
+    teammateGroupId: string,
+  ): Promise<OperationResponse<"delete-company-teammate-group">> {
+    return await this.base.requestOperation("delete-company-teammate-group", {
+      path: { teammate_group_id: teammateGroupId },
+    });
+  }
+
+  /** GET /teammate_groups/{teammate_group_id}/inboxes
+   * Required scope: `inboxes:read`
+   * @see https://dev.frontapp.com/reference/list-company-teammate-group-team-inboxes
+   */
+  async listInboxes(
+    teammateGroupId: string,
+  ): Promise<OperationResponse<"list-company-teammate-group-team-inboxes">> {
+    return await this.base.requestOperation("list-company-teammate-group-team-inboxes", {
+      path: { teammate_group_id: teammateGroupId },
+    });
+  }
+
+  /** POST /teammate_groups/{teammate_group_id}/inboxes
+   * Required scope: `teammate_groups:write`
+   * @see https://dev.frontapp.com/reference/add-company-teammate-group-team-inboxes
+   */
+  async addInboxes(
+    teammateGroupId: string,
+    body: AddTeammateGroupInboxesParams,
+  ): Promise<OperationResponse<"add-company-teammate-group-team-inboxes">> {
+    return await this.base.requestOperation("add-company-teammate-group-team-inboxes", {
+      body,
+      path: { teammate_group_id: teammateGroupId },
+    });
+  }
+
+  /** DELETE /teammate_groups/{teammate_group_id}/inboxes
+   * Required scope: `teammate_groups:write`
+   * @see https://dev.frontapp.com/reference/remove-company-teammate-group-team-inboxes
+   */
+  async removeInboxes(
+    teammateGroupId: string,
+    body?: RemoveTeammateGroupInboxesParams,
+  ): Promise<OperationResponse<"remove-company-teammate-group-team-inboxes">> {
+    return await this.base.requestOperation("remove-company-teammate-group-team-inboxes", {
+      body,
+      path: { teammate_group_id: teammateGroupId },
+    });
+  }
+
+  /** GET /teammate_groups/{teammate_group_id}/teammates
+   * Required scope: `teammates:read`
+   * @see https://dev.frontapp.com/reference/list-company-teammate-group-teammates
+   */
+  async listTeammates(
+    teammateGroupId: string,
+  ): Promise<OperationResponse<"list-company-teammate-group-teammates">> {
+    return await this.base.requestOperation("list-company-teammate-group-teammates", {
+      path: { teammate_group_id: teammateGroupId },
+    });
+  }
+
+  /** POST /teammate_groups/{teammate_group_id}/teammates
+   * Required scope: `teammate_groups:write`
+   * @see https://dev.frontapp.com/reference/add-company-teammate-group-teammates
+   */
+  async addTeammates(
+    teammateGroupId: string,
+    body: AddTeammateGroupTeammatesParams,
+  ): Promise<OperationResponse<"add-company-teammate-group-teammates">> {
+    return await this.base.requestOperation("add-company-teammate-group-teammates", {
+      body,
+      path: { teammate_group_id: teammateGroupId },
+    });
+  }
+
+  /** DELETE /teammate_groups/{teammate_group_id}/teammates
+   * Required scope: `teammate_groups:write`
+   * @see https://dev.frontapp.com/reference/remove-company-teammate-group-teammates
+   */
+  async removeTeammates(
+    teammateGroupId: string,
+    body?: RemoveTeammateGroupTeammatesParams,
+  ): Promise<OperationResponse<"remove-company-teammate-group-teammates">> {
+    return await this.base.requestOperation("remove-company-teammate-group-teammates", {
+      body,
+      path: { teammate_group_id: teammateGroupId },
+    });
+  }
+
+  /** GET /teammate_groups/{teammate_group_id}/teams
+   * Required scope: `teams:read`
+   * @see https://dev.frontapp.com/reference/list-company-teammate-group-teams
+   */
+  async listTeams(
+    teammateGroupId: string,
+  ): Promise<OperationResponse<"list-company-teammate-group-teams">> {
+    return await this.base.requestOperation("list-company-teammate-group-teams", {
+      path: { teammate_group_id: teammateGroupId },
+    });
+  }
+
+  /** POST /teammate_groups/{teammate_group_id}/teams
+   * Required scope: `teammate_groups:write`
+   * @see https://dev.frontapp.com/reference/add-company-teammate-group-teams
+   */
+  async addTeams(
+    teammateGroupId: string,
+    body: AddTeammateGroupTeamsParams,
+  ): Promise<OperationResponse<"add-company-teammate-group-teams">> {
+    return await this.base.requestOperation("add-company-teammate-group-teams", {
+      body,
+      path: { teammate_group_id: teammateGroupId },
+    });
+  }
+
+  /** DELETE /teammate_groups/{teammate_group_id}/teams
+   * Required scope: `teammate_groups:write`
+   * @see https://dev.frontapp.com/reference/remove-company-teammate-group-teams
+   */
+  async removeTeams(
+    teammateGroupId: string,
+    body?: RemoveTeammateGroupTeamsParams,
+  ): Promise<OperationResponse<"remove-company-teammate-group-teams">> {
+    return await this.base.requestOperation("remove-company-teammate-group-teams", {
+      body,
+      path: { teammate_group_id: teammateGroupId },
+    });
   }
 }

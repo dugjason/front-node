@@ -7,15 +7,19 @@ import { FrontApplications } from "./resources/applications";
 import { FrontChannels } from "./resources/channels";
 import { FrontComments } from "./resources/comments";
 import { FrontCompany } from "./resources/company";
+import { FrontTimeOffs } from "./resources/time-offs";
 import { FrontContactLists } from "./resources/contact-lists";
 import { FrontContacts } from "./resources/contacts";
 import { FrontConversations } from "./resources/conversations";
-import { FrontCustomFieldsGlobal } from "./resources/custom-fields-global";
 import { FrontDownloads } from "./resources/downloads";
 import { FrontDrafts } from "./resources/drafts";
 import { FrontEvents } from "./resources/events";
 import { FrontInboxes } from "./resources/inboxes";
-import { FrontKnowledgeBases } from "./resources/knowledge";
+import {
+  FrontKnowledgeBases,
+  FrontKnowledgeBaseArticles,
+  FrontKnowledgeBaseCategories,
+} from "./resources/knowledge";
 import { FrontLinks } from "./resources/links";
 import { FrontMe } from "./resources/me";
 import { FrontMessageTemplateFolders } from "./resources/message-template-folders";
@@ -160,7 +164,7 @@ export const resolveFrontAuth = (options?: {
  * Resource namespaces mirror OpenAPI path groups (accounts, analytics, applications, channels,
  * comments, company, contact lists, contacts, conversations, custom fields, downloads, drafts,
  * events, inboxes, knowledge bases, links, identity, message templates, messages, rules, shifts,
- * teammate groups, teams, tags, signatures, teammates, views).
+ * teammate groups, teams, tags, signatures, teammates, time off, views).
  *
  * @see https://dev.frontapp.com/reference/introduction
  */
@@ -183,8 +187,6 @@ export class Front extends FrontBase {
   readonly contacts: FrontContacts;
   /** Conversations under `/conversations`. */
   readonly conversations: FrontConversations;
-  /** Company-wide contact custom field definitions (`GET /custom_fields`). */
-  readonly customFieldsGlobal: FrontCustomFieldsGlobal;
   /** Attachment download by link id (`GET /download/{attachment_link_id}`). */
   readonly downloads: FrontDownloads;
   /** Drafts under `/drafts`. */
@@ -195,6 +197,10 @@ export class Front extends FrontBase {
   readonly inboxes: FrontInboxes;
   /** Knowledge bases, articles, and categories (`/knowledge_bases`, `/knowledge_base_*`). */
   readonly knowledgeBases: FrontKnowledgeBases;
+  /** Knowledge base article operations, addressed by article ID. */
+  readonly knowledgeBaseArticles: FrontKnowledgeBaseArticles;
+  /** Knowledge base category operations, addressed by category ID. */
+  readonly knowledgeBaseCategories: FrontKnowledgeBaseCategories;
   /** Links under `/links`. */
   readonly links: FrontLinks;
   /** Current token identity (`GET /me`). */
@@ -221,6 +227,8 @@ export class Front extends FrontBase {
   readonly teams: FrontTeams;
   /** Views under `/views`. */
   readonly views: FrontViews;
+  /** Time off details and updates; lists and creation are scoped to teams/teammates. */
+  readonly timeOffs: FrontTimeOffs;
 
   private oauthRefreshToken: string | undefined;
   private readonly autoRefreshParams: FrontOAuthRefreshParams | undefined;
@@ -265,12 +273,13 @@ export class Front extends FrontBase {
     this.contactLists = new FrontContactLists(this);
     this.contacts = new FrontContacts(this);
     this.conversations = new FrontConversations(this);
-    this.customFieldsGlobal = new FrontCustomFieldsGlobal(this);
     this.downloads = new FrontDownloads(this);
     this.drafts = new FrontDrafts(this);
     this.events = new FrontEvents(this);
     this.inboxes = new FrontInboxes(this);
     this.knowledgeBases = new FrontKnowledgeBases(this);
+    this.knowledgeBaseArticles = new FrontKnowledgeBaseArticles(this);
+    this.knowledgeBaseCategories = new FrontKnowledgeBaseCategories(this);
     this.links = new FrontLinks(this);
     this.me = new FrontMe(this);
     this.messageTemplateFolders = new FrontMessageTemplateFolders(this);
@@ -284,6 +293,7 @@ export class Front extends FrontBase {
     this.teammates = new FrontTeammates(this);
     this.teams = new FrontTeams(this);
     this.views = new FrontViews(this);
+    this.timeOffs = new FrontTimeOffs(this);
   }
 
   protected override async fetchResponse(url: string, init: RequestInit): Promise<Response> {
@@ -349,14 +359,14 @@ export class Front extends FrontBase {
     });
 
     const text = await response.text();
+    if (!response.ok) {
+      throw new FrontApiError(response, text);
+    }
     let parsed: unknown;
     try {
       parsed = JSON.parse(text);
     } catch {
-      parsed = text;
-    }
-    if (!response.ok) {
-      throw new FrontApiError(response, parsed);
+      parsed = undefined;
     }
     if (!isFrontOAuthTokenResponse(parsed)) {
       throw new Error("Front OAuth token response is missing access_token or refresh_token.");

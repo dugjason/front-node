@@ -1,138 +1,89 @@
-import { FrontBase } from "../base";
-import type { components, operations } from "../gen/schema.gen";
-import type { WithNormalizedPagination } from "../normalize-response";
+import type { FrontBase } from "../base";
+import type { OperationParams, OperationListParams, OperationResponse } from "../operation";
 
-export type CreateContactList = components["schemas"]["CreateContactList"];
-export type AddContactsToList = components["schemas"]["AddContactsToList"];
-export type RemoveContactsFromList = components["schemas"]["RemoveContactsFromList"];
-
-type ListContactListsResponse =
-  operations["list-contact-lists"]["responses"][200]["content"]["application/json"];
-
-type ListContactsInContactListQuery = NonNullable<
-  operations["list-contacts-in-contact-list"]["parameters"]["query"]
+export type CreateContactListParams = NonNullable<OperationParams<"create-contact-list">["body"]>;
+export type ListContactListContactsParams = OperationListParams<"list-contacts-in-contact-list">;
+export type AddContactListContactsParams = NonNullable<
+  OperationParams<"add-contacts-to-contact-list">["body"]
 >;
-type ListContactsInContactListResponse =
-  operations["list-contacts-in-contact-list"]["responses"][200]["content"]["application/json"];
+export type RemoveContactListContactsParams = NonNullable<
+  OperationParams<"remove-contacts-from-contact-list">["body"]
+>;
 
-const queryFromListContactsInContactList = (
-  q?: ListContactsInContactListQuery,
-): Record<string, string | undefined> | undefined => {
-  if (!q) {
-    return;
-  }
-  const out: Record<string, string | undefined> = {};
-  if (q.limit !== undefined) {
-    out.limit = String(q.limit);
-  }
-  if (q.page_token !== undefined) {
-    out.page_token = String(q.page_token);
-  }
-  return out;
-};
-
-/**
- * Company contact lists (`/contact_lists` and `/contact_lists/{contact_list_id}/contacts`).
- *
- * @see https://dev.frontapp.com/reference/contact-lists
- */
+/** Collection operations returning Front response data. */
 export class FrontContactLists {
   private readonly base: FrontBase;
 
-  /** @param base Shared HTTP client (in practice the `Front` instance). */
   constructor(base: FrontBase) {
     this.base = base;
   }
 
-  /**
-   * List contact lists (`GET /contact_lists`).
-   *
-   * **Required scope:** `contacts:read`
-   *
+  /** GET /contact_lists
+   * Required scope: `contacts:read`
    * @see https://dev.frontapp.com/reference/list-contact-lists
    */
-  async list(): Promise<WithNormalizedPagination<ListContactListsResponse>> {
-    return await this.base.requestJson<WithNormalizedPagination<ListContactListsResponse>>(
-      "GET",
-      "/contact_lists",
-    );
+  async list(): Promise<OperationResponse<"list-contact-lists">> {
+    return await this.base.requestOperation("list-contact-lists");
   }
 
-  /**
-   * Create a contact list (`POST /contact_lists`). The API returns `204`.
-   *
-   * **Required scope:** `contacts:write`
-   *
-   * @param body List name (OpenAPI {@link CreateContactList}).
+  /** POST /contact_lists
+   * Required scope: `contacts:write`
    * @see https://dev.frontapp.com/reference/create-contact-list
    */
-  async create(body: CreateContactList): Promise<void> {
-    await this.base.requestJson<undefined>("POST", "/contact_lists", {
-      body,
-    });
+  async create(body: CreateContactListParams): Promise<OperationResponse<"create-contact-list">> {
+    return await this.base.requestOperation("create-contact-list", { body });
   }
 
-  /**
-   * Delete a contact list (`DELETE /contact_lists/{contact_list_id}`). The API returns `204`.
-   *
-   * **Required scope:** `contacts:write`
-   *
+  /** DELETE /contact_lists/{contact_list_id}
+   * Required scope: `contacts:delete`
    * @see https://dev.frontapp.com/reference/delete-contact-list
    */
-  async delete(contactListId: string): Promise<void> {
-    const path = FrontBase.expandPath("/contact_lists/{contact_list_id}", {
-      contact_list_id: contactListId,
+  async delete(contactListId: string): Promise<OperationResponse<"delete-contact-list">> {
+    return await this.base.requestOperation("delete-contact-list", {
+      path: { contact_list_id: contactListId },
     });
-    await this.base.requestJson<undefined>("DELETE", path);
   }
 
-  /**
-   * List contacts in a contact list (`GET /contact_lists/{contact_list_id}/contacts`).
-   *
-   * **Required scope:** `contacts:read`
-   *
-   * @param query Optional `limit` and `page_token`.
+  /** GET /contact_lists/{contact_list_id}/contacts
+   * Required scope: `contacts:read`
    * @see https://dev.frontapp.com/reference/list-contacts-in-contact-list
    */
   async listContacts(
     contactListId: string,
-    query?: ListContactsInContactListQuery,
-  ): Promise<WithNormalizedPagination<ListContactsInContactListResponse>> {
-    const path = FrontBase.expandPath("/contact_lists/{contact_list_id}/contacts", {
-      contact_list_id: contactListId,
+    params?: ListContactListContactsParams,
+  ): Promise<OperationResponse<"list-contacts-in-contact-list">> {
+    return await this.base.requestOperation("list-contacts-in-contact-list", {
+      nextPageUrl: params?.nextPageUrl,
+      path: { contact_list_id: contactListId },
+      query: params,
     });
-    return await this.base.requestJson<WithNormalizedPagination<ListContactsInContactListResponse>>(
-      "GET",
-      path,
-      { query: queryFromListContactsInContactList(query) },
-    );
   }
 
-  /**
-   * Add contacts to a contact list (`POST /contact_lists/{contact_list_id}/contacts`). The API returns `204`.
-   *
-   * **Required scope:** `contacts:write`
-   *
+  /** POST /contact_lists/{contact_list_id}/contacts
+   * Required scope: `contacts:write`
    * @see https://dev.frontapp.com/reference/add-contacts-to-contact-list
    */
-  async addContacts(contactListId: string, body: AddContactsToList): Promise<void> {
-    const path = FrontBase.expandPath("/contact_lists/{contact_list_id}/contacts", {
-      contact_list_id: contactListId,
+  async addContacts(
+    contactListId: string,
+    body: AddContactListContactsParams,
+  ): Promise<OperationResponse<"add-contacts-to-contact-list">> {
+    return await this.base.requestOperation("add-contacts-to-contact-list", {
+      body,
+      path: { contact_list_id: contactListId },
     });
-    await this.base.requestJson<undefined>("POST", path, { body });
   }
 
-  /**
-   * Remove contacts from a contact list (`DELETE /contact_lists/{contact_list_id}/contacts`). The API returns `204`.
-   *
-   * **Required scope:** `contacts:write`
-   *
+  /** DELETE /contact_lists/{contact_list_id}/contacts
+   * Required scope: `contacts:write`
    * @see https://dev.frontapp.com/reference/remove-contacts-from-contact-list
    */
-  async removeContacts(contactListId: string, body: RemoveContactsFromList): Promise<void> {
-    const path = FrontBase.expandPath("/contact_lists/{contact_list_id}/contacts", {
-      contact_list_id: contactListId,
+  async removeContacts(
+    contactListId: string,
+    body?: RemoveContactListContactsParams,
+  ): Promise<OperationResponse<"remove-contacts-from-contact-list">> {
+    return await this.base.requestOperation("remove-contacts-from-contact-list", {
+      body,
+      path: { contact_list_id: contactListId },
     });
-    await this.base.requestJson<undefined>("DELETE", path, { body });
   }
 }

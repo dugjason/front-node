@@ -1,316 +1,130 @@
-import { FrontBase } from "../base";
-import type { components, operations } from "../gen/schema.gen";
-import type { WithNormalizedPagination } from "../normalize-response";
-import { FrontResource } from "../resource";
+import type { FrontBase } from "../base";
+import type { OperationParams, OperationListParams, OperationResponse } from "../operation";
+import type { components } from "../gen/schema.gen";
 
 export type AccountResponse = components["schemas"]["AccountResponse"];
-export type AccountPatch = components["schemas"]["AccountPatch"];
-export type Account = components["schemas"]["Account"];
-export type ContactIds = components["schemas"]["ContactIds"];
 export type CustomFieldResponse = components["schemas"]["CustomFieldResponse"];
 
-type ListAccountsQuery = NonNullable<operations["list-accounts"]["parameters"]["query"]>;
-type ListAccountsResponse =
-  operations["list-accounts"]["responses"][200]["content"]["application/json"];
-
-type ListAccountCustomFieldsResponse =
-  operations["list-account-custom-fields"]["responses"][200]["content"]["application/json"];
-
-type ListAccountContactsQuery = NonNullable<
-  operations["list-account-contacts"]["parameters"]["query"]
+export type ListAccountsParams = OperationListParams<"list-accounts">;
+export type CreateAccountParams = NonNullable<OperationParams<"create-account">["body"]>;
+export type UpdateAccountParams = NonNullable<OperationParams<"update-account">["body"]>;
+export type ListAccountContactsParams = OperationListParams<"list-account-contacts">;
+export type AddAccountContactsParams = NonNullable<
+  OperationParams<"add-contact-to-account">["body"]
 >;
-type ListAccountContactsResponse =
-  operations["list-account-contacts"]["responses"][200]["content"]["application/json"];
+export type RemoveAccountContactsParams = NonNullable<
+  OperationParams<"remove-contact-from-account">["body"]
+>;
 
-const queryFromListAccounts = (
-  q?: ListAccountsQuery,
-): Record<string, string | undefined> | undefined => {
-  if (!q) {
-    return;
-  }
-  const out: Record<string, string | undefined> = {};
-  if (q.limit !== undefined) {
-    out.limit = String(q.limit);
-  }
-  if (q.page_token !== undefined) {
-    out.page_token = String(q.page_token);
-  }
-  if (q.sort_by !== undefined) {
-    out.sort_by = String(q.sort_by);
-  }
-  if (q.sort_order !== undefined) {
-    out.sort_order = String(q.sort_order);
-  }
-  return out;
-};
+/** Collection operations returning Front response data. */
+export class FrontAccounts {
+  private readonly base: FrontBase;
 
-const queryFromListAccountContacts = (
-  q?: ListAccountContactsQuery,
-): Record<string, string | undefined> | undefined => {
-  if (!q) {
-    return;
+  constructor(base: FrontBase) {
+    this.base = base;
   }
-  const out: Record<string, string | undefined> = {};
-  if (q.limit !== undefined) {
-    out.limit = String(q.limit);
-  }
-  if (q.page_token !== undefined) {
-    out.page_token = String(q.page_token);
-  }
-  if (q.sort_by !== undefined) {
-    out.sort_by = String(q.sort_by);
-  }
-  if (q.sort_order !== undefined) {
-    out.sort_order = String(q.sort_order);
-  }
-  return out;
-};
 
-const accountResponseToUpdateBody = (state: AccountResponse): AccountPatch => ({
-  custom_fields: state.custom_fields,
-  description: state.description ?? undefined,
-  domains: state.domains,
-  name: state.name,
-});
-
-/**
- * One account (`/accounts/{account_id}` and related contact routes).
- *
- * Writable: `name`, `description`, `domains`, `customFields`. Read-only: `id`, `logoUrl`, `externalId`, `createdAt`, `updatedAt`, `links`.
- * `PATCH` returns the updated account JSON; {@link update} and {@link save} replace local state from the response.
- *
- * @see https://dev.frontapp.com/reference/accounts
- */
-export class FrontAccounts extends FrontResource<AccountResponse, AccountPatch> {
-  protected selfPath(): string {
-    return FrontBase.expandPath("/accounts/{account_id}", {
-      account_id: this.id,
+  /** GET /accounts
+   * Required scope: `accounts:read`
+   * @see https://dev.frontapp.com/reference/list-accounts
+   */
+  async list(params?: ListAccountsParams): Promise<OperationResponse<"list-accounts">> {
+    return await this.base.requestOperation("list-accounts", {
+      nextPageUrl: params?.nextPageUrl,
+      query: params,
     });
   }
 
-  get name(): string {
-    return this.pick("name");
+  /** POST /accounts
+   * Required scope: `accounts:write`
+   * @see https://dev.frontapp.com/reference/create-account
+   */
+  async create(body: CreateAccountParams): Promise<OperationResponse<"create-account">> {
+    return await this.base.requestOperation("create-account", { body });
   }
 
-  set name(value: string) {
-    this.assign("name", value);
+  /** GET /accounts/{account_id}
+   * Required scope: `accounts:read`
+   * @see https://dev.frontapp.com/reference/fetch-an-account
+   */
+  async get(accountId: string): Promise<OperationResponse<"fetch-an-account">> {
+    return await this.base.requestOperation("fetch-an-account", {
+      path: { account_id: accountId },
+    });
   }
 
-  get description(): string | null {
-    return this.pick("description");
-  }
-
-  set description(value: string | null) {
-    this.assign("description", value);
-  }
-
-  get domains(): string[] {
-    return this.pick("domains");
-  }
-
-  set domains(value: string[]) {
-    this.assign("domains", value);
-  }
-
-  get customFields(): AccountResponse["custom_fields"] {
-    return this.pick("custom_fields");
-  }
-
-  set customFields(value: AccountResponse["custom_fields"]) {
-    this.assign("custom_fields", value);
-  }
-
-  get logoUrl(): string | null {
-    return this.pick("logo_url");
-  }
-
-  get externalId(): string | null {
-    return this.pick("external_id");
-  }
-
-  get createdAt(): number | undefined {
-    return this.pick("created_at");
-  }
-
-  get updatedAt(): number | undefined {
-    return this.pick("updated_at");
-  }
-
-  /**
-   * Build the `PATCH` body implied by the current property values.
+  /** PATCH /accounts/{account_id}
+   * Required scope: `accounts:write`
    * @see https://dev.frontapp.com/reference/update-account
    */
-  toUpdateBody(): AccountPatch {
-    return accountResponseToUpdateBody(this.state);
-  }
-
-  /**
-   * Update this account (`PATCH /accounts/{account_id}`). The API returns `200` with the updated resource.
-   *
-   * **Required scope:** `accounts:write`
-   *
-   * @param body Fields to change (OpenAPI {@link AccountPatch}). Omitting `custom_fields` leaves them unchanged; including it replaces the full set — see API docs.
-   * @see https://dev.frontapp.com/reference/update-account
-   */
-  async update(body: AccountPatch | Partial<AccountPatch>): Promise<void>;
-  async update(accountId: string, body: AccountPatch | Partial<AccountPatch>): Promise<void>;
   async update(
-    bodyOrAccountId: AccountPatch | Partial<AccountPatch> | string,
-    directBody?: AccountPatch | Partial<AccountPatch>,
-  ): Promise<void> {
-    if (typeof bodyOrAccountId === "string") {
-      await this.target(bodyOrAccountId).update(directBody ?? {});
-      return;
-    }
-    await this.patchReplaceFromResponse(bodyOrAccountId);
+    accountId: string,
+    body: UpdateAccountParams,
+  ): Promise<OperationResponse<"update-account">> {
+    return await this.base.requestOperation("update-account", {
+      body,
+      path: { account_id: accountId },
+    });
   }
 
-  override async delete(accountId?: string): Promise<void> {
-    if (accountId === undefined) {
-      await super.delete();
-      return;
-    }
-    await this.target(accountId).delete();
+  /** DELETE /accounts/{account_id}
+   * Required scope: `accounts:delete`
+   * @see https://dev.frontapp.com/reference/delete-an-account
+   */
+  async delete(accountId: string): Promise<OperationResponse<"delete-an-account">> {
+    return await this.base.requestOperation("delete-an-account", {
+      path: { account_id: accountId },
+    });
   }
 
-  /**
-   * List contacts linked to this account (`GET /accounts/{account_id}/contacts`).
-   *
-   * **Required scope:** `contacts:read`
-   *
-   * @param query Optional pagination and sort (`sort_by`: `created_at` or `updated_at`).
+  /** GET /accounts/{account_id}/contacts
+   * Required scope: `contacts:read`
    * @see https://dev.frontapp.com/reference/list-account-contacts
    */
   async listContacts(
-    query?: ListAccountContactsQuery,
-  ): Promise<WithNormalizedPagination<ListAccountContactsResponse>>;
-  async listContacts(
     accountId: string,
-    query?: ListAccountContactsQuery,
-  ): Promise<WithNormalizedPagination<ListAccountContactsResponse>>;
-  async listContacts(
-    queryOrAccountId?: ListAccountContactsQuery | string,
-    directQuery?: ListAccountContactsQuery,
-  ): Promise<WithNormalizedPagination<ListAccountContactsResponse>> {
-    if (typeof queryOrAccountId === "string") {
-      return await this.target(queryOrAccountId).listContacts(directQuery);
-    }
-    const path = FrontBase.expandPath("/accounts/{account_id}/contacts", {
-      account_id: this.id,
+    params?: ListAccountContactsParams,
+  ): Promise<OperationResponse<"list-account-contacts">> {
+    return await this.base.requestOperation("list-account-contacts", {
+      nextPageUrl: params?.nextPageUrl,
+      path: { account_id: accountId },
+      query: params,
     });
-    return await this.base.requestJson<WithNormalizedPagination<ListAccountContactsResponse>>(
-      "GET",
-      path,
-      { query: queryFromListAccountContacts(queryOrAccountId) },
-    );
   }
 
-  /**
-   * Add contacts to this account (`POST /accounts/{account_id}/contacts`). The API returns `204`.
-   *
-   * **Required scope:** `accounts:write`
-   *
-   * @param body Contact ids or resource aliases (OpenAPI {@link ContactIds}).
+  /** POST /accounts/{account_id}/contacts
+   * Required scope: `accounts:write`
    * @see https://dev.frontapp.com/reference/add-contact-to-account
    */
-  async addContacts(body: ContactIds): Promise<void>;
-  async addContacts(accountId: string, body: ContactIds): Promise<void>;
-  async addContacts(bodyOrAccountId: ContactIds | string, directBody?: ContactIds): Promise<void> {
-    if (typeof bodyOrAccountId === "string") {
-      await this.target(bodyOrAccountId).addContacts(directBody ?? { contact_ids: [] });
-      return;
-    }
-    const path = FrontBase.expandPath("/accounts/{account_id}/contacts", {
-      account_id: this.id,
+  async addContacts(
+    accountId: string,
+    body: AddAccountContactsParams,
+  ): Promise<OperationResponse<"add-contact-to-account">> {
+    return await this.base.requestOperation("add-contact-to-account", {
+      body,
+      path: { account_id: accountId },
     });
-    await this.base.requestJson<undefined>("POST", path, { body: bodyOrAccountId });
   }
 
-  /**
-   * Remove contacts from this account (`DELETE /accounts/{account_id}/contacts`). The API returns `204`.
-   *
-   * **Required scope:** `accounts:write`
-   *
-   * @param body Contact ids or resource aliases (OpenAPI {@link ContactIds}).
+  /** DELETE /accounts/{account_id}/contacts
+   * Required scope: `accounts:write`
    * @see https://dev.frontapp.com/reference/remove-contact-from-account
    */
-  async removeContacts(body: ContactIds): Promise<void>;
-  async removeContacts(accountId: string, body: ContactIds): Promise<void>;
   async removeContacts(
-    bodyOrAccountId: ContactIds | string,
-    directBody?: ContactIds,
-  ): Promise<void> {
-    if (typeof bodyOrAccountId === "string") {
-      await this.target(bodyOrAccountId).removeContacts(directBody ?? { contact_ids: [] });
-      return;
-    }
-    const path = FrontBase.expandPath("/accounts/{account_id}/contacts", {
-      account_id: this.id,
-    });
-    await this.base.requestJson<undefined>("DELETE", path, { body: bodyOrAccountId });
-  }
-
-  /**
-   * List accounts for the company (`GET /accounts`).
-   *
-   * **Required scope:** `accounts:read`
-   *
-   * @param query Optional pagination and sort (`sort_by`: `created_at` or `updated_at`).
-   * @see https://dev.frontapp.com/reference/list-accounts
-   */
-  async list(query?: ListAccountsQuery): Promise<WithNormalizedPagination<ListAccountsResponse>> {
-    return await this.base.requestJson<WithNormalizedPagination<ListAccountsResponse>>(
-      "GET",
-      "/accounts",
-      {
-        query: queryFromListAccounts(query),
-      },
-    );
-  }
-
-  /**
-   * Create an account (`POST /accounts`). The API returns `201` with the new account body.
-   *
-   * **Required scope:** `accounts:write`
-   *
-   * @param body Account fields (OpenAPI {@link Account}).
-   * @see https://dev.frontapp.com/reference/create-account
-   */
-  async create(body: Account): Promise<FrontAccounts> {
-    const data = await this.base.requestJson<AccountResponse>("POST", "/accounts", {
+    accountId: string,
+    body?: RemoveAccountContactsParams,
+  ): Promise<OperationResponse<"remove-contact-from-account">> {
+    return await this.base.requestOperation("remove-contact-from-account", {
       body,
+      path: { account_id: accountId },
     });
-    return new FrontAccounts(this.base, data);
   }
 
-  /**
-   * Fetch one account (`GET /accounts/{account_id}`).
-   *
-   * **Required scope:** `accounts:read`
-   *
-   * @param accountId Account id or supported [resource alias](https://dev.frontapp.com/docs/resource-aliases-1) (domain, external id).
-   * @see https://dev.frontapp.com/reference/fetch-an-account
-   */
-  async get(accountId: string): Promise<FrontAccounts> {
-    return await this.target(accountId).refresh();
-  }
-
-  /** Target an account by ID without fetching it first. */
-  private target(accountId: string): FrontAccounts {
-    return new FrontAccounts(this.base, undefined, accountId);
-  }
-
-  /**
-   * List custom fields that can be attached to accounts (`GET /accounts/custom_fields`).
-   *
-   * **Required scope:** `custom_fields:read`
-   *
+  /** GET /accounts/custom_fields
+   * Required scope: `custom_fields:read`
    * @see https://dev.frontapp.com/reference/list-account-custom-fields
    */
-  async listCustomFields(): Promise<WithNormalizedPagination<ListAccountCustomFieldsResponse>> {
-    return await this.base.requestJson<WithNormalizedPagination<ListAccountCustomFieldsResponse>>(
-      "GET",
-      "/accounts/custom_fields",
-    );
+  async listCustomFields(): Promise<OperationResponse<"list-account-custom-fields">> {
+    return await this.base.requestOperation("list-account-custom-fields");
   }
 }

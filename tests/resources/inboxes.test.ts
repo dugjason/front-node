@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import type { ImportMessage } from "../../src/resources/inboxes";
+import type { ImportInboxMessageParams } from "../../src/resources/inboxes";
 import { createMockClient, jsonResponse } from "../helpers/setup";
 
 describe("inboxes", () => {
@@ -8,7 +8,7 @@ describe("inboxes", () => {
     const { front, requests } = createMockClient(() =>
       jsonResponse({ message_uid: "msg_uid_1", status: "accepted" }, { status: 202 }),
     );
-    const body: ImportMessage = {
+    const body: ImportInboxMessageParams = {
       body: "Hello",
       body_format: "markdown",
       created_at: 1_700_000_000,

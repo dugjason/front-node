@@ -1,3 +1,4 @@
+export type { NextPageParams } from "./base";
 export { FrontBase, type FrontBaseOptions } from "./base";
 export { FrontApiError } from "./errors";
 export {
@@ -15,139 +16,249 @@ export {
   pageTokenFromPaginationNextUrl,
   type WithNormalizedPagination,
 } from "./normalize-response";
-export { FrontResource } from "./resource";
 export {
-  type Account,
-  type AccountPatch,
   type AccountResponse,
-  type ContactIds,
   type CustomFieldResponse,
+  type ListAccountsParams,
+  type CreateAccountParams,
+  type UpdateAccountParams,
+  type ListAccountContactsParams,
+  type AddAccountContactsParams,
+  type RemoveAccountContactsParams,
   FrontAccounts,
 } from "./resources/accounts";
 export {
-  type AnalyticsExportRequest,
   type AnalyticsExportResponse,
   type AnalyticsFilters,
   type AnalyticsMetricId,
-  type AnalyticsReportRequest,
   type AnalyticsReportResponse,
+  type CreateAnalyticsExportParams,
+  type CreateAnalyticsReportParams,
   FrontAnalytics,
-  FrontAnalyticsExport,
-  FrontAnalyticsReport,
 } from "./resources/analytics";
-export { type AppEvent, FrontApplications } from "./resources/applications";
+export { type TriggerApplicationEventParams, FrontApplications } from "./resources/applications";
 export {
   type ChannelResponse,
-  type CreateChannel,
-  type CreateDraft,
-  type CustomMessage,
-  FrontChannels,
+  type CreateChannelParams,
+  type UpdateChannelParams,
+  type CreateChannelDraftParams,
+  type ReceiveCustomMessageParams,
+  type CreateChannelMessageParams,
   type MessageResponse,
-  type OutboundMessage,
-  type UpdateChannel,
+  type ListChannelsResponse,
+  type AcceptedMessageResponse,
+  type ValidateChannelResponse,
+  FrontChannels,
 } from "./resources/channels";
 export {
   type CommentResponse,
-  type CreateComment,
+  type UpdateCommentParams,
+  type AddCommentReplyParams,
   FrontComments,
-  type UpdateComment,
 } from "./resources/comments";
-export { FrontCompany, type RuleResponse, type StatusResponse } from "./resources/company";
 export {
-  type AddContactsToList,
-  type CreateContactList,
+  type RuleResponse,
+  type StatusResponse,
+  type ListCompanyTagsParams,
+  type CreateCompanyTagParams,
+  FrontCompany,
+} from "./resources/company";
+export {
+  type CreateContactListParams,
+  type ListContactListContactsParams,
+  type AddContactListContactsParams,
+  type RemoveContactListContactsParams,
   FrontContactLists,
-  type RemoveContactsFromList,
 } from "./resources/contact-lists";
 export {
-  type Contact,
-  type ContactHandle,
   type ContactResponse,
-  type ContactSnapshot,
-  type CreateContact,
-  type CreateContactNote,
-  type DeleteContactHandle,
+  type ListContactsParams,
+  type CreateContactParams,
+  type UpdateContactParams,
+  type MergeContactParams,
+  type ListContactConversationsParams,
+  type AddContactHandleParams,
+  type DeleteContactHandleParams,
+  type AddContactNoteParams,
   FrontContacts,
-  type MergeContacts,
 } from "./resources/contacts";
 export {
   type ConversationResponse,
-  type CreateConversation,
+  type ListConversationsParams,
+  type CreateConversationParams,
+  type UpdateConversationParams,
+  type SearchConversationParams,
+  type UpdateConversationAssigneeParams,
+  type AddConversationCommentParams,
+  type CreateConversationDraftReplyParams,
+  type ListConversationEventsParams,
+  type AddConversationFollowersParams,
+  type AddConversationFollowersQueryParams,
+  type DeleteConversationFollowersParams,
+  type AddConversationLinkParams,
+  type RemoveConversationLinksParams,
+  type ListConversationMessagesParams,
+  type CreateConversationMessageReplyParams,
+  type UpdateConversationRemindersParams,
+  type AddConversationTagParams,
+  type RemoveConversationTagParams,
+  type ListLinkedConversationsParams,
+  type CreateLinkedConversationsParams,
   FrontConversations,
-  type ListConversationMessagesQuery,
-  type OutboundReplyMessage,
-  type ReplyDraft,
-  type TagIds,
-  type UpdateConversation,
-  type UpdateConversationReminders,
 } from "./resources/conversations";
-export { FrontCustomFieldsGlobal } from "./resources/custom-fields-global";
 export { FrontDownloads } from "./resources/downloads";
-export { FrontDrafts } from "./resources/drafts";
-export { FrontEvents } from "./resources/events";
+export { type DeleteDraftParams, type EditDraftParams, FrontDrafts } from "./resources/drafts";
+export { type ListEventsParams, FrontEvents } from "./resources/events";
 export {
-  type CreateInbox,
-  FrontInboxes,
-  type ImportMessage,
   type InboxResponse,
-  type TeammateIds,
+  type CreateInboxParams,
+  type ListInboxConversationsParams,
+  type ImportInboxMessageParams,
+  type AddInboxTeammateAccessParams,
+  type RemoveInboxTeammateAccessParams,
+  FrontInboxes,
 } from "./resources/inboxes";
 export {
-  FrontKnowledgeBaseArticle,
-  FrontKnowledgeBaseCategory,
-  FrontKnowledgeBases,
-  type KnowledgeBaseArticleCreate,
-  type KnowledgeBaseArticlePatch,
-  type KnowledgeBaseArticleResponse,
-  type KnowledgeBaseArticleSlimResponse,
-  type KnowledgeBaseCategoryCreate,
-  type KnowledgeBaseCategoryPatch,
-  type KnowledgeBaseCategoryResponse,
-  type KnowledgeBaseCategorySlimResponse,
-  type KnowledgeBaseCreate,
-  type KnowledgeBasePatch,
-  type KnowledgeBaseResponse,
   type KnowledgeBaseSlimResponse,
+  type KnowledgeBaseArticleSlimResponse,
+  type KnowledgeBaseCategorySlimResponse,
+  type KnowledgeBaseResponse,
+  type KnowledgeBaseArticleResponse,
+  type KnowledgeBaseCategoryResponse,
+  type CreateKnowledgeBaseParams,
+  type UpdateKnowledgeBaseContentDefaultParams,
+  type UpdateKnowledgeBaseContentLocaleParams,
+  type ListKnowledgeBaseArticlesParams,
+  type CreateKnowledgeBaseArticleDefaultParams,
+  type CreateKnowledgeBaseArticleLocaleParams,
+  type ListKnowledgeBaseCategoriesParams,
+  type CreateKnowledgeBaseCategoryDefaultParams,
+  type CreateKnowledgeBaseCategoryLocaleParams,
+  type UpdateKnowledgeBaseArticleContentDefaultParams,
+  type UpdateKnowledgeBaseArticleContentLocaleParams,
+  type ListKnowledgeBaseCategoryArticlesParams,
+  type UpdateKnowledgeBaseCategoryContentDefaultParams,
+  type UpdateKnowledgeBaseCategoryContentLocaleParams,
+  FrontKnowledgeBases,
+  FrontKnowledgeBaseArticles,
+  FrontKnowledgeBaseCategories,
 } from "./resources/knowledge";
-export { FrontLinks } from "./resources/links";
-export { FrontMe, type IdentityResponse } from "./resources/me";
-export { FrontMessageTemplateFolders } from "./resources/message-template-folders";
-export { FrontMessageTemplates } from "./resources/message-templates";
+export {
+  type LinkResponse,
+  type ListLinksParams,
+  type CreateLinkParams,
+  type UpdateLinkParams,
+  type ListLinkConversationsParams,
+  FrontLinks,
+} from "./resources/links";
+export { type IdentityResponse, FrontMe } from "./resources/me";
+export {
+  type MessageTemplateFolderResponse,
+  type ListMessageTemplateFoldersParams,
+  type CreateMessageTemplateFolderParams,
+  type UpdateMessageTemplateFolderParams,
+  type CreateMessageTemplateFolderChildFolderParams,
+  type CreateMessageTemplateFolderChildTemplateParams,
+  FrontMessageTemplateFolders,
+} from "./resources/message-template-folders";
+export {
+  type MessageTemplateResponse,
+  type ListMessageTemplatesParams,
+  type CreateMessageTemplateParams,
+  type UpdateMessageTemplateParams,
+  FrontMessageTemplates,
+} from "./resources/message-templates";
 export { FrontMessages } from "./resources/messages";
 export { FrontRules } from "./resources/rules";
-export { FrontShifts } from "./resources/shifts";
 export {
-  type CreatePrivateSignature,
-  type CreateSharedSignature,
-  FrontSignatures,
+  type ShiftResponse,
+  type CreateShiftParams,
+  type UpdateShiftParams,
+  type AddShiftTeammatesParams,
+  type RemoveShiftTeammatesParams,
+  FrontShifts,
+} from "./resources/shifts";
+export {
   type SignatureResponse,
-  type UpdateSignature,
+  type UpdateSignatureParams,
+  type CreateSignatureTeammateParams,
+  type CreateSignatureTeamParams,
+  FrontSignatures,
 } from "./resources/signatures";
 export {
-  type CreateTag,
-  FrontTags,
   type TagResponse,
-  type TagUpdateInput,
-  type UpdateTag,
+  type CreateTagParams,
+  type CreateChildTagParams,
+  type UpdateTagParams,
+  type ListTagsParams,
+  type ListTaggedConversationsParams,
+  FrontTags,
 } from "./resources/tags";
-export { FrontTeammateGroups } from "./resources/teammate-groups";
 export {
-  type CustomFieldParameter,
-  FrontTeammates,
+  type TeammateGroupResponse,
+  type CreateTeammateGroupParams,
+  type UpdateTeammateGroupParams,
+  type AddTeammateGroupInboxesParams,
+  type RemoveTeammateGroupInboxesParams,
+  type AddTeammateGroupTeammatesParams,
+  type RemoveTeammateGroupTeammatesParams,
+  type AddTeammateGroupTeamsParams,
+  type RemoveTeammateGroupTeamsParams,
+  FrontTeammateGroups,
+} from "./resources/teammate-groups";
+export {
   type TeammateResponse,
-  type UpdateTeammate,
+  type CustomFieldParameter,
+  type UpdateTeammateParams,
+  type ListTeammateAssignedConversationsParams,
+  type CreateTeammateContactListParams,
+  type ListTeammateContactsParams,
+  type CreateTeammateContactParams,
+  type ListTeammateMessageTemplateFoldersParams,
+  type CreateTeammateMessageTemplateFolderParams,
+  type ListTeammateMessageTemplatesParams,
+  type CreateTeammateMessageTemplateParams,
+  type CreateTeammateSignatureParams,
+  type ListTeammateTagsParams,
+  type CreateTeammateTagParams,
+  type CreateTeammatePrivateInboxParams,
+  type ListTeammateTimeOffsParams,
+  type CreateTimeOffParams,
+  FrontTeammates,
 } from "./resources/teammates";
 export {
-  type CreateMessageTemplateFolder,
-  type CreateSharedMessageTemplate,
-  type CreateShift,
-  type CreateTeamInbox,
-  type CreateView,
-  FrontTeams,
-  type MessageTemplateFolderResponse,
-  type MessageTemplateResponse,
-  type SharedViewResponse,
-  type ShiftResponse,
   type TeamResponse,
+  type SharedViewResponse,
+  type AddTeamTeammatesParams,
+  type RemoveTeamTeammatesParams,
+  type CreateTeamContactListParams,
+  type ListTeamContactsParams,
+  type CreateTeamContactParams,
+  type ListTeamMessageTemplateFoldersParams,
+  type CreateTeamMessageTemplateFolderParams,
+  type ListTeamMessageTemplatesParams,
+  type CreateTeamMessageTemplateParams,
+  type CreateTeamShiftParams,
+  type CreateTeamSignatureParams,
+  type ListTeamTagsParams,
+  type CreateTeamTagParams,
+  type ListTeamViewsParams,
+  type CreateTeamViewParams,
+  type ListTeamTimeOffsParams,
+  type CreateTeamInboxParams,
+  FrontTeams,
 } from "./resources/teams";
-export { FrontViews } from "./resources/views";
+export {
+  type ViewResponse,
+  type ListViewsParams,
+  type UpdateViewParams,
+  type AddViewTeammatesParams,
+  FrontViews,
+} from "./resources/views";
+export type { OperationParams, OperationListParams, OperationResponse } from "./operation";
+
+export {
+  type UpdateTimeOffParams,
+  type TimeOffResponse,
+  FrontTimeOffs,
+} from "./resources/time-offs";
