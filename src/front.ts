@@ -61,6 +61,9 @@ export type FrontApiKeyOptions = FrontRequestOptions & {
   accessToken?: never;
   refreshToken?: never;
   onTokenRefresh?: never;
+  autoRefresh?: never;
+  clientId?: never;
+  clientSecret?: never;
 };
 
 /** OAuth credentials for {@link Front}. Mutually exclusive with {@link FrontApiKeyOptions.apiKey}. */
@@ -72,7 +75,22 @@ export type FrontOAuthOptions = FrontRequestOptions & {
   refreshToken: string;
   /** Optionally provide a function to handle the new tokens. */
   onTokenRefresh?: (tokens: FrontOAuthTokenResponse) => void | Promise<void>;
-};
+} & (
+    | {
+        /** Refresh on an API 401 and retry once. Requires application credentials. */
+        autoRefresh: true;
+        /** OAuth application client ID. */
+        clientId: string;
+        /** OAuth application client secret. */
+        clientSecret: string;
+      }
+    | {
+        /** Automatic refresh is disabled by default. */
+        autoRefresh?: false;
+        clientId?: string;
+        clientSecret?: string;
+      }
+  );
 
 /** Options for the {@link Front} client constructor. */
 export type FrontOptions = FrontApiKeyOptions | FrontOAuthOptions;
@@ -213,6 +231,8 @@ export class Front extends FrontBase {
   readonly timeOffs: FrontTimeOffs;
 
   private oauthRefreshToken: string | undefined;
+  private readonly autoRefreshParams: FrontOAuthRefreshParams | undefined;
+  private pendingRefresh: Promise<FrontOAuthTokenResponse> | undefined;
   private readonly onTokenRefresh: FrontOAuthOptions["onTokenRefresh"];
 
   /**
@@ -236,6 +256,14 @@ export class Front extends FrontBase {
     super(baseOptions);
     this.oauthRefreshToken = auth.type === "oauth" ? auth.refreshToken : undefined;
     this.onTokenRefresh = options?.onTokenRefresh;
+    if (auth.type === "oauth" && options?.autoRefresh) {
+      const clientId = trimToUndefined(options.clientId);
+      const clientSecret = trimToUndefined(options.clientSecret);
+      if (!clientId || !clientSecret) {
+        throw new Error("Automatic OAuth refresh requires clientId and clientSecret.");
+      }
+      this.autoRefreshParams = { clientId, clientSecret };
+    }
     this.accounts = new FrontAccounts(this);
     this.analytics = new FrontAnalytics(this);
     this.applications = new FrontApplications(this);
@@ -268,11 +296,38 @@ export class Front extends FrontBase {
     this.timeOffs = new FrontTimeOffs(this);
   }
 
+  protected override async fetchResponse(url: string, init: RequestInit): Promise<Response> {
+    const accessToken = this.apiKey;
+    const response = await super.fetchResponse(url, init);
+    if (response.status !== 401 || !this.autoRefreshParams) {
+      return response;
+    }
+    if (this.apiKey === accessToken) {
+      await this.refreshAfterUnauthorized(this.autoRefreshParams);
+    }
+    const headers = new Headers(init.headers);
+    headers.set("Authorization", `Bearer ${this.apiKey}`);
+    return await super.fetchResponse(url, { ...init, headers });
+  }
+
+  private async refreshAfterUnauthorized(params: FrontOAuthRefreshParams): Promise<void> {
+    if (this.pendingRefresh) {
+      await this.pendingRefresh;
+      return;
+    }
+    this.pendingRefresh = this.refreshOAuthToken(params);
+    try {
+      await this.pendingRefresh;
+    } finally {
+      this.pendingRefresh = undefined;
+    }
+  }
+
   /**
    * Exchange the stored refresh token for a new access and refresh token pair.
    * Awaits `onTokenRefresh` before adopting the tokens. If the callback throws,
    * the refresh rejects and the client's credentials remain unchanged.
-   * Does not run automatically on HTTP 401.
+   * Runs on HTTP 401 only when the constructor enables `autoRefresh`.
    *
    * @see https://dev.frontapp.com/docs/oauth
    */

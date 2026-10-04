@@ -72,6 +72,10 @@ export class FrontBase {
     return appendQuery(joinUrl(this.baseUrl, path), query);
   }
 
+  protected async fetchResponse(url: string, init: RequestInit): Promise<Response> {
+    return await this.fetchImpl(url, init);
+  }
+
   /**
    * Build a path by substituting `{param}` placeholders with URL-encoded values
    * (e.g. `"/tags/{tag_id}"` + `{ tag_id: "tag_1" }` → `"/tags/tag_1"`).
@@ -178,7 +182,7 @@ export class FrontBase {
     if (init?.body !== undefined) {
       headers.set("Content-Type", "application/json");
     }
-    const response = await this.fetchImpl(url, {
+    const response = await this.fetchResponse(url, {
       body: init?.body === undefined ? undefined : JSON.stringify(init.body),
       headers,
       method,
@@ -227,7 +231,7 @@ export class FrontBase {
         }
       }
     }
-    const response = await this.fetchImpl(url, { headers, method });
+    const response = await this.fetchResponse(url, { headers, method });
     if (!response.ok) {
       const text = await response.text();
       throw new FrontApiError(response, text);

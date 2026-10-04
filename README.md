@@ -148,7 +148,7 @@ Migration: replace fetched-resource operations with calls on their collection, p
 
 ### OAuth
 
-Credentials are exclusive: pass `{ apiKey }` **or** `{ accessToken, refreshToken }`, never both. Access tokens expire after 60 minutes; this client does not refresh on 401 — call `refreshOAuthToken` yourself.
+Credentials are exclusive: pass `{ apiKey }` **or** `{ accessToken, refreshToken }`, never both. Automatic OAuth refresh defaults to `false`. To refresh manually, call `refreshOAuthToken`:
 
 ```ts
 const front = new Front({
@@ -166,6 +166,29 @@ const tokens = await front.refreshOAuthToken({
 ```
 
 `refreshOAuthToken()` awaits `onTokenRefresh` before updating the client's credentials and returning the tokens. The callback receives the same `access_token` and `refresh_token` fields as the return value. If persistence fails, the refresh rejects and the client keeps its previous credentials. Front may already have rotated the refresh token, so recover the persistence failure before attempting another refresh.
+
+To enable automatic refresh, provide the OAuth application's `clientId` and `clientSecret` in the constructor:
+
+```ts
+const front = new Front({
+  accessToken,
+  refreshToken,
+  autoRefresh: true,
+  clientId,
+  clientSecret,
+  onTokenRefresh: async (tokens) => {
+    await persistTokens(tokens.access_token, tokens.refresh_token);
+  },
+});
+```
+
+With `autoRefresh: true`, an API 401 triggers `refreshOAuthToken()`. The client awaits `onTokenRefresh`, adopts the new tokens, and retries the original request once. A second 401 throws `FrontApiError` without another refresh. Other HTTP statuses do not trigger refresh. These rules apply to JSON requests and raw responses, including attachment downloads.
+
+Concurrent 401s share one token exchange and save callback per client. If another request has already replaced the failed request's token, that request retries with the current token. This coordination does not extend across client instances or manually initiated refresh calls.
+
+Token exchange failures propagate as `FrontApiError` with the token endpoint's status, headers, and parsed body. For example, `body.error === "invalid_grant"` identifies a rejected refresh token; a 5xx response preserves the provider failure. Network errors and save callback errors propagate unchanged. Neither failure is replaced by the original API 401, and neither causes a request retry. A failed save leaves the client's credentials unchanged, even though Front may already have rotated the refresh token.
+
+API-key clients do not automatically refresh. OAuth clients with `autoRefresh` omitted or set to `false` keep the manual behavior above.
 
 ## Development
 

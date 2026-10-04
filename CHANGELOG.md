@@ -1,5 +1,17 @@
 # @dugjason/front-node
 
+## 0.4.0
+
+### Minor Changes
+
+- 0d623fb: Add opt-in automatic OAuth refresh on API 401 responses. Await token persistence before retrying once, share refresh across concurrent requests, and preserve token exchange and save errors for both JSON and raw-response requests.
+
+## 0.3.0
+
+### Minor Changes
+
+- f7a19eb: Add OAuth credentials and explicit token refresh through `refreshOAuthToken()`. The optional `onTokenRefresh` callback receives the rotated access and refresh tokens and is awaited before the client adopts them. If the callback fails, the refresh rejects and the client keeps its previous credentials. Token refresh does not run automatically on HTTP 401 responses.
+
 ## 0.2.1
 
 ### Patch Changes
