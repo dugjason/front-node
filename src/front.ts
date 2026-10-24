@@ -1,6 +1,6 @@
 import { FrontBase } from "./base";
 import type { FrontBaseOptions } from "./base";
-import { FrontApiError } from "./errors";
+import { FrontApiError, parseErrorBody } from "./errors/front-api-error";
 import { FrontAccounts } from "./resources/accounts";
 import { FrontAnalytics } from "./resources/analytics";
 import { FrontApplications } from "./resources/applications";
@@ -46,6 +46,8 @@ export interface FrontRequestOptions {
   fetch?: typeof fetch;
   /** Override the User-Agent header sent with every request. */
   userAgent?: string;
+  /** Retry HTTP 429 responses up to twice (default true). */
+  rateLimitRetry?: boolean;
 }
 
 /** API-token credentials for {@link Front}. */
@@ -238,6 +240,7 @@ export class Front extends FrontBase {
     const baseOptions: FrontBaseOptions = {
       apiKey: auth.type === "oauth" ? auth.accessToken : auth.token,
       baseUrl: baseUrl ?? DEFAULT_BASE_URL,
+      rateLimitRetry: options?.rateLimitRetry,
     };
     if (fetchOption !== undefined) {
       baseOptions.fetch = fetchOption;
@@ -287,17 +290,19 @@ export class Front extends FrontBase {
   }
 
   protected override async fetchResponse(url: string, init: RequestInit): Promise<Response> {
+    const retryState = { attempt: 0 };
     const accessToken = this.apiKey;
-    const response = await super.fetchResponse(url, init);
+    const response = await super.fetchResponse(url, init, retryState);
     if (response.status !== 401 || !this.autoRefreshParams) {
       return response;
     }
+    await response.arrayBuffer();
     if (this.apiKey === accessToken) {
       await this.refreshAfterUnauthorized(this.autoRefreshParams);
     }
     const headers = new Headers(init.headers);
     headers.set("Authorization", `Bearer ${this.apiKey}`);
-    return await super.fetchResponse(url, { ...init, headers });
+    return await super.fetchResponse(url, { ...init, headers }, retryState);
   }
 
   private async refreshAfterUnauthorized(params: FrontOAuthRefreshParams): Promise<void> {
@@ -334,7 +339,7 @@ export class Front extends FrontBase {
       throw new Error("refreshOAuthToken() requires clientId and clientSecret.");
     }
 
-    const response = await this.fetchImpl(OAUTH_TOKEN_URL, {
+    const response = await super.fetchResponse(OAUTH_TOKEN_URL, {
       body: JSON.stringify({
         grant_type: "refresh_token",
         refresh_token: refreshToken,
@@ -348,13 +353,7 @@ export class Front extends FrontBase {
       method: "POST",
     });
 
-    const text = await response.text();
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(text);
-    } catch {
-      parsed = text;
-    }
+    const parsed = parseErrorBody(await response.text());
     if (!response.ok) {
       throw new FrontApiError(response, parsed);
     }

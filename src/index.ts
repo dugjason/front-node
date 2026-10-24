@@ -1,5 +1,5 @@
 export { FrontBase, type FrontBaseOptions } from "./base";
-export { FrontApiError } from "./errors";
+export { FrontApiError, FrontRateLimitError } from "./errors";
 export {
   Front,
   type FrontApiKeyOptions,

@@ -22,3 +22,15 @@ export class FrontApiError extends Error {
     this.body = body;
   }
 }
+
+/** Parse an HTTP error payload, preserving plain-text responses. */
+export const parseErrorBody = (text: string): unknown => {
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      return text;
+    }
+    throw error;
+  }
+};

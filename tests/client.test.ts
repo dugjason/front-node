@@ -40,17 +40,19 @@ describe("Front", () => {
   });
 
   test("error response throws FrontApiError with status and body", async () => {
-    const { front } = createMockClient(() =>
-      Response.json(
-        { _error: "Too many requests" },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            "Retry-After": "30",
+    const { front } = createMockClient(
+      () =>
+        Response.json(
+          { _error: "Too many requests" },
+          {
+            headers: {
+              "Content-Type": "application/json",
+              "Retry-After": "30",
+            },
+            status: 429,
           },
-          status: 429,
-        },
-      ),
+        ),
+      { rateLimitRetry: false },
     );
 
     await expect(front.tags.list()).rejects.toBeInstanceOf(FrontApiError);
