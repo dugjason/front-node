@@ -75,7 +75,7 @@ export class FrontBase {
     const fetchAttempt = async (attempt: number): Promise<Response> => {
       const response = await this.fetchImpl(url, init);
       if (response.status === 429) {
-        await this.handleRateLimit(response, init, attempt);
+        await this.handleRateLimit(response, attempt);
         retries.attempt = attempt + 1;
         return await fetchAttempt(attempt + 1);
       }
@@ -84,20 +84,14 @@ export class FrontBase {
     return await fetchAttempt(retries.attempt);
   }
 
-  private async handleRateLimit(
-    response: Response,
-    init: RequestInit,
-    attempt: number,
-  ): Promise<void> {
+  private async handleRateLimit(response: Response, attempt: number): Promise<void> {
     const delay = rateLimitDelay(response.headers);
     if (!this.rateLimitRetry || attempt >= 2) {
       throw new FrontRateLimitError(response, parseErrorBody(await response.text()), delay);
     }
     // Consume the unused body so the connection can be reused.
     await response.arrayBuffer();
-    await sleep(Math.max(1, delay + Math.floor(Math.random() * 1000)), undefined, {
-      signal: init.signal ?? undefined,
-    });
+    await sleep(Math.max(1, delay + Math.floor(Math.random() * 1000)));
   }
 
   /**
