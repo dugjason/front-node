@@ -1,5 +1,11 @@
 # @dugjason/front-node
 
+## 0.5.0
+
+### Minor Changes
+
+- b1c4211: Retry HTTP 429 responses by default for API-key and OAuth clients, including parsed requests, raw downloads, and token exchanges. Retry up to twice, honoring provider delay headers with positive jitter and a 60-second fallback. Add `rateLimitRetry: false` to opt out and export `FrontRateLimitError`, extending `FrontApiError` with `retryAfterMs`. Existing HTTP error metadata remains available. Consumers with custom retry wrappers should remove them or disable SDK retries to avoid stacking budgets.
+
 ## 0.4.0
 
 ### Minor Changes
