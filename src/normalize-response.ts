@@ -33,9 +33,11 @@ export const pageTokenFromPaginationNextUrl = (next?: string | null): string | n
     if (token !== null && token !== "") {
       return token;
     }
-  } catch {
-    // not a URL
-    return null;
+  } catch (error) {
+    if (error instanceof TypeError) {
+      return null;
+    }
+    throw error;
   }
   return null;
 };

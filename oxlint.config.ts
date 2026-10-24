@@ -3,6 +3,7 @@ import core from "ultracite/oxlint/core";
 
 export default defineConfig({
   extends: [core],
+  jsPlugins: ["./.agents/lint/caught-errors.mjs"],
   overrides: [
     {
       files: ["src/gen/**/*.ts"],
@@ -35,4 +36,5 @@ export default defineConfig({
       },
     },
   ],
+  rules: { "caught-errors/require-read": "error" },
 });

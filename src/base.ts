@@ -1,6 +1,9 @@
+import { setTimeout as sleep } from "node:timers/promises";
 import packageJson from "../package.json";
-import { FrontApiError } from "./errors";
+import { FrontApiError, parseErrorBody } from "./errors/front-api-error";
+import { FrontRateLimitError } from "./errors/front-rate-limit-error";
 import { normalizeFrontResponse } from "./normalize-response";
+import { rateLimitDelay } from "./rate-limit";
 
 const DEFAULT_USER_AGENT = `${packageJson.name}@${packageJson.version}`;
 
@@ -14,6 +17,8 @@ export interface FrontBaseOptions {
   fetch?: typeof fetch;
   /** User-Agent header value sent with each request. */
   userAgent?: string;
+  /** Retry HTTP 429 responses up to twice (default true). */
+  rateLimitRetry?: boolean;
 }
 
 const TRAILING_SLASH_AT_END = /\/$/u;
@@ -46,9 +51,11 @@ export class FrontBase {
   protected readonly baseUrl: string;
   protected readonly fetchImpl: typeof fetch;
   protected readonly userAgent: string;
+  private readonly rateLimitRetry: boolean;
 
   /** @param options API token and optional overrides. */
   constructor(options: FrontBaseOptions) {
+    this.rateLimitRetry = options.rateLimitRetry ?? true;
     this.apiKey = options.apiKey;
     this.baseUrl = options.baseUrl ?? "https://api2.frontapp.com";
     this.fetchImpl = options.fetch ?? globalThis.fetch.bind(globalThis);
@@ -59,8 +66,32 @@ export class FrontBase {
     return appendQuery(joinUrl(this.baseUrl, path), query);
   }
 
-  protected async fetchResponse(url: string, init: RequestInit): Promise<Response> {
-    return await this.fetchImpl(url, init);
+  protected async fetchResponse(
+    url: string,
+    init: RequestInit,
+    retryState?: { attempt: number },
+  ): Promise<Response> {
+    const retries = retryState ?? { attempt: 0 };
+    const fetchAttempt = async (attempt: number): Promise<Response> => {
+      const response = await this.fetchImpl(url, init);
+      if (response.status === 429) {
+        await this.handleRateLimit(response, attempt);
+        retries.attempt = attempt + 1;
+        return await fetchAttempt(attempt + 1);
+      }
+      return response;
+    };
+    return await fetchAttempt(retries.attempt);
+  }
+
+  private async handleRateLimit(response: Response, attempt: number): Promise<void> {
+    const delay = rateLimitDelay(response.headers);
+    if (!this.rateLimitRetry || attempt >= 2) {
+      throw new FrontRateLimitError(response, parseErrorBody(await response.text()), delay);
+    }
+    // Consume the unused body so the connection can be reused.
+    await response.arrayBuffer();
+    await sleep(Math.max(1, delay + Math.floor(Math.random() * 1000)));
   }
 
   /**
@@ -114,14 +145,7 @@ export class FrontBase {
       method,
     });
     if (!response.ok) {
-      let parsed: unknown;
-      const text = await response.text();
-      try {
-        parsed = JSON.parse(text) as unknown;
-      } catch {
-        parsed = text;
-      }
-      throw new FrontApiError(response, parsed);
+      throw new FrontApiError(response, parseErrorBody(await response.text()));
     }
     if (response.status === 204) {
       return undefined as TResult;
@@ -165,14 +189,7 @@ export class FrontBase {
     }
     const response = await this.fetchResponse(url, { headers, method });
     if (!response.ok) {
-      let parsed: unknown;
-      const text = await response.text();
-      try {
-        parsed = JSON.parse(text) as unknown;
-      } catch {
-        parsed = text;
-      }
-      throw new FrontApiError(response, parsed);
+      throw new FrontApiError(response, parseErrorBody(await response.text()));
     }
     return response;
   }

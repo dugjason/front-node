@@ -88,6 +88,18 @@ bun run changeset
 Merging to `main` opens or updates a version PR. Merging that version PR publishes
 to npm as `@dugjason/front-node` through npm trusted publishing.
 
+## Rate limits
+
+HTTP 429 responses retry twice by default, waiting for `Retry-After` seconds plus 0–999 ms of jitter. If absent, retries use `X-RateLimit-Reset`. Invalid delays or delays over 60 seconds use 60 seconds. This includes raw responses and OAuth token requests.
+
+Disable SDK retries when your application handles them:
+
+```ts
+const front = new Front({ apiKey: "...", rateLimitRetry: false });
+```
+
+Disabled or exhausted retries throw `FrontRateLimitError`, extending `FrontApiError` with `retryAfterMs` before jitter. Use `error instanceof FrontRateLimitError` to handle it; the final response metadata remains available.
+
 ## Custom `fetch`
 
 You can use the library with a custom fetch library, compatible with `node:fetch`.

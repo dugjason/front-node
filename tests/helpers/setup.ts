@@ -27,12 +27,13 @@ const requestFromFetchInput = (input: Parameters<typeof fetch>[0], init?: Reques
 };
 
 const apiKeyClientOptions = (
-  options: { apiKey?: string; userAgent?: string },
+  options: { apiKey?: string; rateLimitRetry?: boolean; userAgent?: string },
   mockFetch: typeof fetch,
 ): FrontApiKeyOptions => {
   const frontOptions: FrontApiKeyOptions = {
     apiKey: options.apiKey ?? TEST_API_KEY,
     fetch: mockFetch,
+    rateLimitRetry: options.rateLimitRetry,
   };
   if (options.userAgent !== undefined) {
     frontOptions.userAgent = options.userAgent;
@@ -44,6 +45,7 @@ const oauthClientOptions = (
   options: {
     accessToken: string;
     refreshToken?: string;
+    rateLimitRetry?: boolean;
     userAgent?: string;
     onTokenRefresh?: FrontOAuthOptions["onTokenRefresh"];
   },
@@ -53,6 +55,7 @@ const oauthClientOptions = (
     accessToken: options.accessToken,
     fetch: mockFetch,
     onTokenRefresh: options.onTokenRefresh,
+    rateLimitRetry: options.rateLimitRetry,
     refreshToken: options.refreshToken ?? "test-refresh-token",
   };
   if (options.userAgent !== undefined) {
@@ -67,6 +70,7 @@ export const createMockClient = (
     apiKey?: string;
     accessToken?: string;
     refreshToken?: string;
+    rateLimitRetry?: boolean;
     userAgent?: string;
     onTokenRefresh?: FrontOAuthOptions["onTokenRefresh"];
   } = {},
@@ -88,6 +92,7 @@ export const createMockClient = (
             {
               accessToken: options.accessToken,
               onTokenRefresh: options.onTokenRefresh,
+              rateLimitRetry: options.rateLimitRetry,
               refreshToken: options.refreshToken,
               userAgent: options.userAgent,
             },
