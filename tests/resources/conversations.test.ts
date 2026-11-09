@@ -1,8 +1,34 @@
 import { describe, expect, test } from "bun:test";
 
-import { createMockClient, createTestSetup } from "../helpers/setup";
+import { createMockClient, createTestSetup, jsonResponse } from "../helpers/setup";
 
 describe("conversations", () => {
+  test("saving an unassigned conversation omits assignee_id", async () => {
+    const { front, requests } = createMockClient((request) =>
+      request.method === "GET"
+        ? jsonResponse({ assignee: null, custom_fields: {}, id: "cnv_1", tags: [] })
+        : new Response(null, { status: 204 }),
+    );
+
+    const conversation = await front.conversations.get("cnv_1");
+    await conversation.save();
+
+    expect(await requests[1]?.json()).not.toHaveProperty("assignee_id");
+  });
+
+  test("unassigning a conversation clears the cached assignee", async () => {
+    const { front } = createMockClient((request) =>
+      request.method === "GET"
+        ? jsonResponse({ assignee: { id: "tea_1" }, id: "cnv_1" })
+        : new Response(null, { status: 204 }),
+    );
+
+    const conversation = await front.conversations.get("cnv_1");
+    await conversation.update({ assignee_id: null });
+
+    expect(conversation.assignee).toBeNull();
+  });
+
   test("ID-first conversation API updates nested resources without fetching first", async () => {
     const { front, requests } = createMockClient(() => new Response(null, { status: 204 }));
 

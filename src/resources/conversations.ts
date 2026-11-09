@@ -240,14 +240,13 @@ const mergeConversationSnapshot = (
     };
   }
 
-  const assigneePatch = filtered.assignee_id as string | null | undefined;
-  if (assigneePatch !== undefined) {
+  const assigneeId = filtered.assignee_id;
+  if (assigneeId === null) {
+    next = { ...next, assignee: null };
+  } else if (assigneeId !== undefined && next.assignee) {
     next = {
       ...next,
-      assignee: {
-        ...next.assignee,
-        id: assigneePatch === null ? "" : assigneePatch,
-      },
+      assignee: { ...next.assignee, id: assigneeId },
     };
   }
 
@@ -257,7 +256,7 @@ const mergeConversationSnapshot = (
 const conversationResponseToUpdateBody = (state: ConversationResponse): UpdateConversation => {
   const status = conversationStatusToUpdateStatus(state.status);
   return {
-    assignee_id: state.assignee.id === "" ? undefined : state.assignee.id,
+    assignee_id: state.assignee?.id || undefined,
     custom_fields: state.custom_fields,
     tag_ids: state.tags.map((t) => t.id),
     ...(status === undefined ? {} : { status }),
@@ -397,8 +396,7 @@ export class FrontConversations extends FrontResource<ConversationResponse, Upda
 
   /**
    * Assign or unassign (`PUT /conversations/{conversation_id}/assignee`). The API returns `204`.
-   * Pass `{ assignee_id: null }` to unassign (JSON `null` is accepted by the API even when the generated schema
-   * types `assignee_id` as `string`).
+   * Pass `{ assignee_id: null }` to unassign.
    *
    * **Required scope:** `conversations:write`
    *
