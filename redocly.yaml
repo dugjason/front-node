@@ -1,0 +1,12 @@
+# openapi-typescript prefers this pinned input and output over the build script's CLI arguments.
+apis:
+  front-core:
+    root: https://raw.githubusercontent.com/frontapp/front-api-specs/7a62cc93709d34b602910145090f1880ab062ecb/core-api/core-api.json
+    x-openapi-ts:
+      output: ./src/gen/schema.gen.ts
+plugins:
+  - ./scripts/front-core-schema.mjs
+preprocessors:
+  front-core/schema-corrections: on
+rules:
+  operation-operationId-unique: error
