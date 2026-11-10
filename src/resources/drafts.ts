@@ -1,5 +1,6 @@
 import { FrontBase } from "../base";
 import type { components, operations } from "../gen/schema.gen";
+import { normalizeMessageAuthor } from "../normalize-message-response";
 
 export type DeleteDraft = components["schemas"]["DeleteDraft"];
 export type EditDraft = components["schemas"]["EditDraft"];
@@ -41,8 +42,9 @@ export class FrontDrafts {
     const path = FrontBase.expandPath("/drafts/{message_id}/", {
       message_id: messageId,
     });
-    return await this.base.requestJson<EditDraftMessageResponse>("PATCH", path, {
+    const draft = await this.base.requestJson<EditDraftMessageResponse>("PATCH", path, {
       body,
     });
+    return normalizeMessageAuthor(draft);
   }
 }

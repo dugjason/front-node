@@ -6391,7 +6391,7 @@ export interface components {
        */
       blurb?: string;
       /** @description Front teammate who sent this message */
-      author?: components["schemas"]["TeammateResponse"] | null;
+      author: components["schemas"]["TeammateResponse"] | null;
       recipients?: components["schemas"]["RecipientResponse"][];
       /**
        * @description Body of the message

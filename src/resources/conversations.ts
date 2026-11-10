@@ -1,5 +1,10 @@
 import { FrontBase } from "../base";
 import type { components, operations } from "../gen/schema.gen";
+import {
+  normalizeEventMessageAuthor,
+  normalizeMessageAuthor,
+  normalizeResponseResults,
+} from "../normalize-message-response";
 import type { WithNormalizedPagination } from "../normalize-response";
 import { FrontResource } from "../resource";
 import type { CreateComment } from "./comments";
@@ -147,7 +152,7 @@ const queryFromListConversationMessages = (
   return out;
 };
 
-const requestListConversationMessages = (
+const requestListConversationMessages = async (
   base: FrontBase,
   conversationId: string,
   query?: ListConversationMessagesQuery,
@@ -155,9 +160,12 @@ const requestListConversationMessages = (
   const path = FrontBase.expandPath("/conversations/{conversation_id}/messages", {
     conversation_id: conversationId,
   });
-  return base.requestJson<WithNormalizedPagination<ListConversationMessagesResponse>>("GET", path, {
+  const messages = await base.requestJson<
+    WithNormalizedPagination<ListConversationMessagesResponse>
+  >("GET", path, {
     query: queryFromListConversationMessages(query),
   });
+  return normalizeResponseResults(messages, normalizeMessageAuthor);
 };
 
 const queryFromAddConversationFollowers = (
@@ -486,10 +494,10 @@ export class FrontConversations extends FrontResource<ConversationResponse, Upda
     const path = FrontBase.expandPath("/conversations/{conversation_id}/drafts", {
       conversation_id: this.id,
     });
-    return await this.base.requestJson<WithNormalizedPagination<ListConversationDraftsResponse>>(
-      "GET",
-      path,
-    );
+    const drafts = await this.base.requestJson<
+      WithNormalizedPagination<ListConversationDraftsResponse>
+    >("GET", path);
+    return normalizeResponseResults(drafts, normalizeMessageAuthor);
   }
 
   /**
@@ -514,9 +522,10 @@ export class FrontConversations extends FrontResource<ConversationResponse, Upda
     const path = FrontBase.expandPath("/conversations/{conversation_id}/drafts", {
       conversation_id: this.id,
     });
-    return await this.base.requestJson<MessageResponse>("POST", path, {
+    const draft = await this.base.requestJson<MessageResponse>("POST", path, {
       body: bodyOrConversationId,
     });
+    return normalizeMessageAuthor(draft);
   }
 
   /**
@@ -543,11 +552,10 @@ export class FrontConversations extends FrontResource<ConversationResponse, Upda
     const path = FrontBase.expandPath("/conversations/{conversation_id}/events", {
       conversation_id: this.id,
     });
-    return await this.base.requestJson<WithNormalizedPagination<ListConversationEventsResponse>>(
-      "GET",
-      path,
-      { query: queryFromListConversationEvents(queryOrConversationId) },
-    );
+    const events = await this.base.requestJson<
+      WithNormalizedPagination<ListConversationEventsResponse>
+    >("GET", path, { query: queryFromListConversationEvents(queryOrConversationId) });
+    return normalizeResponseResults(events, normalizeEventMessageAuthor);
   }
 
   /**

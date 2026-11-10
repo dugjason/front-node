@@ -5,6 +5,15 @@ export default function frontCoreSchema() {
       oas3: {
         "schema-corrections": () => ({
           Root(spec) {
+            const message = spec.components?.schemas?.MessageResponse;
+            if (message?.properties?.author) {
+              // The SDK exposes author as required and nullable. Front's schema allows omission.
+              message.required ??= [];
+              if (!message.required.includes("author")) {
+                message.required.push("author");
+              }
+            }
+
             // Front documents the ticket_status_update target at https://dev.frontapp.com/reference/events
             const targets =
               spec.components?.schemas?.EventResponse?.properties?.target?.properties?.data?.oneOf;

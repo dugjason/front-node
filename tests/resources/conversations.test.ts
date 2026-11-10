@@ -89,8 +89,10 @@ describe("conversations", () => {
   });
 
   test("conversations.listMessages sends GET /conversations/{id}/messages", async () => {
-    const { front, requests } = createTestSetup();
-    await front.conversations.listMessages("cnv_abc", {
+    const { front, requests } = createMockClient(() =>
+      jsonResponse({ _results: [{ id: "msg_1" }, { author: { id: "tea_1" }, id: "msg_2" }] }),
+    );
+    const messages = await front.conversations.listMessages("cnv_abc", {
       limit: 25,
       sort_by: "created_at",
       sort_order: "desc",
@@ -104,5 +106,7 @@ describe("conversations", () => {
       sort_by: "created_at",
       sort_order: "desc",
     });
+    expect(messages._results?.[0]?.author).toBeNull();
+    expect(messages._results?.[1]?.author?.id).toBe("tea_1");
   });
 });

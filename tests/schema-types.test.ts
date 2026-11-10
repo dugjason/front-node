@@ -11,7 +11,7 @@ import type {
 } from "../src/index";
 
 test("response types preserve nullable references and the required closed flag", () => {
-  expectTypeOf<MessageResponse["author"]>().toEqualTypeOf<TeammateResponse | null | undefined>();
+  expectTypeOf<MessageResponse["author"]>().toEqualTypeOf<TeammateResponse | null>();
   expectTypeOf<ConversationResponse["assignee"]>().toEqualTypeOf<TeammateResponse | null>();
   expectTypeOf<ConversationResponse["recipient"]>().toEqualTypeOf<
     components["schemas"]["RecipientResponse"] | null
@@ -26,8 +26,16 @@ test("response types preserve nullable references and the required closed flag",
 
 test("the public event response accepts a ticket status target", () => {
   type Event = Awaited<ReturnType<FrontEvents["get"]>>;
-  expectTypeOf<{
-    type: "ticket_status_update";
-    target: { data: StatusResponse };
-  }>().toExtend<Event>();
+  type Schemas = components["schemas"];
+  type TargetData = NonNullable<Event["target"]>["data"];
+  expectTypeOf<TargetData>().toEqualTypeOf<
+    | TeammateResponse
+    | Schemas["InboxResponse"]
+    | Schemas["TagResponse"]
+    | Schemas["CommentResponse"]
+    | MessageResponse
+    | Schemas["LinkResponse"]
+    | StatusResponse
+    | undefined
+  >();
 });

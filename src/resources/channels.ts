@@ -1,5 +1,6 @@
 import { FrontBase } from "../base";
 import type { components, operations } from "../gen/schema.gen";
+import { normalizeMessageAuthor } from "../normalize-message-response";
 import type { WithNormalizedPagination } from "../normalize-response";
 import { FrontResource } from "../resource";
 
@@ -158,7 +159,9 @@ export class FrontChannels extends FrontResource<ChannelResponse, UpdateChannel>
     const path = FrontBase.expandPath("/channels/{channel_id}/drafts", {
       channel_id: id,
     });
-    return await this.base.requestJson<MessageResponse>("POST", path, { body });
+    return normalizeMessageAuthor(
+      await this.base.requestJson<MessageResponse>("POST", path, { body }),
+    );
   }
 
   /**

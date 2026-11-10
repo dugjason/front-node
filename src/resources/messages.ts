@@ -1,5 +1,6 @@
 import { FrontBase } from "../base";
 import type { components, operations } from "../gen/schema.gen";
+import { normalizeMessageAuthor } from "../normalize-message-response";
 import type { WithNormalizedPagination } from "../normalize-response";
 
 type MessageResponse = components["schemas"]["MessageResponse"];
@@ -44,7 +45,9 @@ export class FrontMessages {
     const path = FrontBase.expandPath("/messages/{message_id}", {
       message_id: this.messageId,
     });
-    this.snapshot = await this.base.requestJson<MessageResponse>("GET", path);
+    this.snapshot = normalizeMessageAuthor(
+      await this.base.requestJson<MessageResponse>("GET", path),
+    );
     return this;
   }
 
@@ -142,7 +145,7 @@ export class FrontMessages {
     const path = FrontBase.expandPath("/messages/{message_id}", {
       message_id: messageId,
     });
-    const data = await this.base.requestJson<MessageResponse>("GET", path);
+    const data = normalizeMessageAuthor(await this.base.requestJson<MessageResponse>("GET", path));
     return new FrontMessages(this.base, messageId, data);
   }
 }
