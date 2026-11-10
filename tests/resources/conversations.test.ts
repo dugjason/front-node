@@ -16,17 +16,32 @@ describe("conversations", () => {
     expect(await requests[1]?.json()).not.toHaveProperty("assignee_id");
   });
 
-  test("unassigning a conversation clears the cached assignee", async () => {
-    const { front } = createMockClient((request) =>
-      request.method === "GET"
-        ? jsonResponse({ assignee: { id: "tea_1" }, id: "cnv_1" })
-        : new Response(null, { status: 204 }),
-    );
+  test.each(["update", "updateAssignee"] as const)(
+    "%s clears the cached assignee on unassign",
+    async (method) => {
+      const { front, requests } = createMockClient((request) =>
+        request.method === "GET"
+          ? jsonResponse({ assignee: { id: "tea_1" }, id: "cnv_1" })
+          : new Response(null, { status: 204 }),
+      );
 
-    const conversation = await front.conversations.get("cnv_1");
-    await conversation.update({ assignee_id: null });
+      const conversation = await front.conversations.get("cnv_1");
+      const body = { assignee_id: null };
+      await (method === "update" ? conversation.update(body) : conversation.updateAssignee(body));
 
-    expect(conversation.assignee).toBeNull();
+      expect(await requests[1]?.json()).toEqual({ assignee_id: null });
+      expect(conversation.assignee).toBeNull();
+    },
+  );
+
+  test("unassigning by ID needs no cached conversation", async () => {
+    const { front, requests } = createMockClient(() => new Response(null, { status: 204 }));
+
+    await front.conversations.updateAssignee("cnv_1", { assignee_id: null });
+
+    expect(requests).toHaveLength(1);
+    expect(requests[0]?.method).toBe("PUT");
+    expect(await requests[0]?.json()).toEqual({ assignee_id: null });
   });
 
   test("ID-first conversation API updates nested resources without fetching first", async () => {

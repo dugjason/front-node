@@ -419,6 +419,9 @@ export class FrontConversations extends FrontResource<ConversationResponse, Upda
       conversation_id: this.id,
     });
     await this.base.requestJson<undefined>("PUT", path, { body: bodyOrConversationId });
+    if (bodyOrConversationId.assignee_id === null && this.hasState()) {
+      this.assign("assignee", null);
+    }
   }
 
   /**
