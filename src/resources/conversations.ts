@@ -240,14 +240,8 @@ const mergeConversationSnapshot = (
     };
   }
 
-  const assigneeId = filtered.assignee_id;
-  if (assigneeId === null) {
+  if (filtered.assignee_id === null) {
     next = { ...next, assignee: null };
-  } else if (assigneeId !== undefined && next.assignee) {
-    next = {
-      ...next,
-      assignee: { ...next.assignee, id: assigneeId },
-    };
   }
 
   return next;
@@ -256,7 +250,6 @@ const mergeConversationSnapshot = (
 const conversationResponseToUpdateBody = (state: ConversationResponse): UpdateConversation => {
   const status = conversationStatusToUpdateStatus(state.status);
   return {
-    assignee_id: state.assignee?.id || undefined,
     custom_fields: state.custom_fields,
     tag_ids: state.tags.map((t) => t.id),
     ...(status === undefined ? {} : { status }),
@@ -267,9 +260,8 @@ const conversationResponseToUpdateBody = (state: ConversationResponse): UpdateCo
 /**
  * One conversation (`/conversations/{conversation_id}` and nested routes).
  *
- * Writable fields for {@link save} map from {@link ConversationResponse} into {@link UpdateConversation}
- * (assignee, status, status id, tags, custom fields). `PATCH` returns `204`; {@link update} merges the
- * request into local state for supported fields — call {@link refresh} when you need an authoritative snapshot.
+ * {@link save} writes status, status ID, tags, and custom fields. To change the assignee, pass
+ * `assignee_id` to {@link update} or {@link updateAssignee}.
  *
  * @see https://dev.frontapp.com/reference/conversations
  */
@@ -352,8 +344,9 @@ export class FrontConversations extends FrontResource<ConversationResponse, Upda
   }
 
   /**
-   * Update this conversation (`PATCH /conversations/{conversation_id}`). The API returns `204`; local state
-   * is merged from the body for supported fields.
+   * Update this conversation (`PATCH /conversations/{conversation_id}`). The API returns `204`.
+   * Local state is merged from the body for supported fields. Call {@link refresh} after assigning
+   * a teammate to load their details.
    *
    * **Required scope:** `conversations:write`
    *
@@ -396,7 +389,8 @@ export class FrontConversations extends FrontResource<ConversationResponse, Upda
 
   /**
    * Assign or unassign (`PUT /conversations/{conversation_id}/assignee`). The API returns `204`.
-   * Pass `{ assignee_id: null }` to unassign.
+   * Pass `{ assignee_id: null }` to unassign. Call {@link refresh} after assigning a teammate to
+   * load their details.
    *
    * **Required scope:** `conversations:write`
    *

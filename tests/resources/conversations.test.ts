@@ -17,6 +17,32 @@ describe("conversations", () => {
   });
 
   test.each(["update", "updateAssignee"] as const)(
+    "%s assigns a teammate without rewriting or resending the fetched assignee",
+    async (method) => {
+      const previousAssignee = { email: "first@example.com", id: "tea_1" };
+      const { front, requests } = createMockClient((request) =>
+        request.method === "GET"
+          ? jsonResponse({
+              assignee: previousAssignee,
+              custom_fields: {},
+              id: "cnv_1",
+              tags: [],
+            })
+          : new Response(null, { status: 204 }),
+      );
+
+      const conversation = await front.conversations.get("cnv_1");
+      const body = { assignee_id: "tea_2" };
+      await (method === "update" ? conversation.update(body) : conversation.updateAssignee(body));
+      await conversation.save();
+
+      expect(await requests[1]?.json()).toEqual(body);
+      expect(conversation.assignee).toMatchObject(previousAssignee);
+      expect(await requests[2]?.json()).not.toHaveProperty("assignee_id");
+    },
+  );
+
+  test.each(["update", "updateAssignee"] as const)(
     "%s clears the cached assignee on unassign",
     async (method) => {
       const { front, requests } = createMockClient((request) =>
