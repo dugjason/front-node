@@ -1,5 +1,9 @@
 import { FrontBase } from "../base";
 import type { components, operations } from "../gen/schema.gen";
+import {
+  normalizeEventMessageAuthor,
+  normalizeResponseResults,
+} from "../normalize-message-response";
 import type { WithNormalizedPagination } from "../normalize-response";
 
 type ListEventsQuery = NonNullable<operations["list-events"]["parameters"]["query"]>;
@@ -49,11 +53,12 @@ export class FrontEvents {
    * **Required scope:** `events:*:read`
    */
   async list(query?: ListEventsQuery): Promise<WithNormalizedPagination<ListEventsResponse>> {
-    return await this.base.requestJson<WithNormalizedPagination<ListEventsResponse>>(
+    const events = await this.base.requestJson<WithNormalizedPagination<ListEventsResponse>>(
       "GET",
       "/events",
       { query: queryFromListEvents(query) },
     );
+    return normalizeResponseResults(events, normalizeEventMessageAuthor);
   }
 
   /**
@@ -65,6 +70,6 @@ export class FrontEvents {
     const path = FrontBase.expandPath("/events/{event_id}", {
       event_id: eventId,
     });
-    return await this.base.requestJson<GetEventResponse>("GET", path);
+    return normalizeEventMessageAuthor(await this.base.requestJson<GetEventResponse>("GET", path));
   }
 }

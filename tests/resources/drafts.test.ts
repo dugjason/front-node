@@ -11,7 +11,8 @@ describe("drafts", () => {
       channel_id: "cha_1",
       mode: "shared",
     };
-    await front.drafts.edit("msg_1", body);
+    const draft = await front.drafts.edit("msg_1", body);
+    expect(draft.author).toBeNull();
     expect(requests).toHaveLength(1);
     expect(requests[0]?.method).toBe("PATCH");
     expect(requests[0]?.url).toBe("https://api2.frontapp.com/drafts/msg_1/");

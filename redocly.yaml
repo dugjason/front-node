@@ -1,0 +1,12 @@
+# openapi-typescript takes the upstream schema and output path from this config.
+apis:
+  front-core:
+    root: https://raw.githubusercontent.com/frontapp/front-api-specs/main/core-api/core-api.json
+    x-openapi-ts:
+      output: ./src/gen/schema.gen.ts
+plugins:
+  - ./scripts/front-core-schema.mjs
+preprocessors:
+  front-core/schema-corrections: on
+rules:
+  operation-operationId-unique: error

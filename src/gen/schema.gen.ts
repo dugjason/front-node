@@ -396,22 +396,6 @@ export interface paths {
     delete?: never;
     options?: never;
     head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/comments/{comment_id}/": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
     /**
      * Update comment
      * @description Update a comment in a [conversation](https://dev.frontapp.com/reference/conversations).
@@ -1255,6 +1239,39 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/conversations/{conversation_id}/linked_conversations": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List linked conversations
+     * @description List the conversations linked to the original conversation in the path. Conversations the requester cannot access are omitted,
+     *     so a page can hold fewer results than requested while more remain.
+     *
+     *
+     *     Required scope: `conversations:read`
+     */
+    get: operations["list-linked-conversations"];
+    put?: never;
+    /**
+     * Link conversations
+     * @description Adds conversations to the link group of the conversation in the path, which becomes the original conversation of the group.
+     *     If it belongs to no group yet, a new one is formed. A conversation belongs to at most one group, and a conversation that
+     *     was linked to another one cannot become an original conversation.
+     *
+     *
+     *     Required scope: `conversations:write`
+     */
+    post: operations["create-linked-conversations"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/conversations/{conversation_id}/links": {
     parameters: {
       query?: never;
@@ -1440,7 +1457,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/drafts/{message_id}/": {
+  "/drafts/{message_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -4017,7 +4034,13 @@ export interface components {
        * @example Limitless Paper in a Paperless World
        */
       description: string | null;
-      /** @description List of domains associated to the Account */
+      /**
+       * @description List of domains associated to the Account
+       * @example [
+       *       "dundermifflininc.com",
+       *       "limitlesspaper.com"
+       *     ]
+       */
       domains: string[];
       /**
        * @description ID of the Account in an External system, such as your backoffice system or CRM
@@ -4880,7 +4903,13 @@ export interface components {
        * @example https://yourCompany.api.frontapp.com/contacts/crd_3cgz4ge/avatar-1673436467707
        */
       avatar_url?: string;
-      /** @description List of all the links of the contact */
+      /**
+       * @description List of all the links of the contact
+       * @example [
+       *       "https://shrutefarms.com",
+       *       "https://eatyourbeets.com"
+       *     ]
+       */
       links?: string[];
       /**
        * @deprecated
@@ -4933,6 +4962,16 @@ export interface components {
            */
           inboxes?: string;
           /**
+           * @description Link to the conversations linked to this conversation's group. Only present when the conversation belongs to one.
+           * @example https://yourCompany.api.frontapp.com/conversations/cnv_yo1kg5q/linked_conversations
+           */
+          linked_conversations?: string;
+          /**
+           * @description Link to the original conversation of the group. Only present on a conversation that is linked to one.
+           * @example https://yourCompany.api.frontapp.com/conversations/cnv_yo1kg5q
+           */
+          original_conversation?: string;
+          /**
            * @description Link to last message of the conversation
            * @example https://yourCompany.api.frontapp.com/messages/msg_1q15qmtq?referer=conversation
            */
@@ -4980,9 +5019,9 @@ export interface components {
        */
       ticket_ids: string[];
       /** @description Partial representation of the teammate assigned to the conversation */
-      assignee: components["schemas"]["TeammateResponse"];
+      assignee: components["schemas"]["TeammateResponse"] | null;
       /** @description Main recipient of the conversation */
-      recipient: components["schemas"]["RecipientResponse"];
+      recipient: components["schemas"]["RecipientResponse"] | null;
       /** @description List of the tags for this conversation */
       tags: components["schemas"]["TagResponse"][];
       /** @description List of the links for this conversation */
@@ -5009,6 +5048,11 @@ export interface components {
        * @example true
        */
       is_private: boolean;
+      /**
+       * @description Whether the conversation is closed. Closed conversations cannot be reopened, and replies or drafts on them are rejected.
+       * @example false
+       */
+      is_closed: boolean;
       /** @description List of scheduled (non-expired and non-canceled) reminders for this conversation */
       scheduled_reminders: components["schemas"]["Reminder"][];
       /** @description Description of the task. Only present on task conversations. */
@@ -5651,7 +5695,8 @@ export interface components {
           | components["schemas"]["TagResponse"]
           | components["schemas"]["CommentResponse"]
           | components["schemas"]["MessageResponse"]
-          | components["schemas"]["LinkResponse"];
+          | components["schemas"]["LinkResponse"]
+          | components["schemas"]["StatusResponse"];
       };
       /** @description The conversation on which the event happened */
       conversation?: components["schemas"]["ConversationResponse"];
@@ -5867,7 +5912,13 @@ export interface components {
        * @example published
        */
       status: string;
-      /** @description Article keywords */
+      /**
+       * @description Article keywords
+       * @example [
+       *       "billing",
+       *       "returns"
+       *     ]
+       */
       keywords: string[];
       /**
        * @description Article HTML content
@@ -5932,7 +5983,13 @@ export interface components {
        * @example /articles/5
        */
       slug: string;
-      /** @description List of the locales the article supports */
+      /**
+       * @description List of the locales the article supports
+       * @example [
+       *       "en",
+       *       "es"
+       *     ]
+       */
       locales: string[];
       /**
        * @description Timestamp when the article was created
@@ -6061,7 +6118,13 @@ export interface components {
        * @example false
        */
       is_hidden: boolean;
-      /** @description List of the locales the category supports */
+      /**
+       * @description List of the locales the category supports
+       * @example [
+       *       "en",
+       *       "es"
+       *     ]
+       */
       locales: string[];
       /**
        * @description Timestamp when the category was created
@@ -6179,7 +6242,13 @@ export interface components {
        * @enum {string}
        */
       type: "internal" | "external";
-      /** @description List of the KB's possible locales */
+      /**
+       * @description List of the KB's possible locales
+       * @example [
+       *       "en",
+       *       "es"
+       *     ]
+       */
       locales: string[];
       /**
        * @description Timestamp when the knowledge base was created
@@ -6322,7 +6391,7 @@ export interface components {
        */
       blurb?: string;
       /** @description Front teammate who sent this message */
-      author?: components["schemas"]["TeammateResponse"];
+      author: components["schemas"]["TeammateResponse"] | null;
       recipients?: components["schemas"]["RecipientResponse"][];
       /**
        * @description Body of the message
@@ -6360,6 +6429,11 @@ export interface components {
          * @example dkd84992kduo903
          */
         external_id?: string;
+        /**
+         * @description For `email` messages only. RFC 5322 Message-ID the email was sent or received with. `null` for drafts and for emails whose Message-ID Front doesn't know, such as API-imported emails.
+         * @example <CAHfOhZawbZjrSmM7Yv6OAN6cFUFw6p0k8AQP4THjr5hz@mail.gmail.com>
+         */
+        rfc5322_message_id?: string | null;
         /**
          * @description For `tweet` messages only. URL of the tweet.
          * @example https://twitter.com
@@ -6670,7 +6744,15 @@ export interface components {
        * @example Scranton new account workflow
        */
       name: string;
-      /** @description List of the rule's actions description */
+      /**
+       * @description List of the rule's actions description
+       * @example [
+       *       "Assign to Pam",
+       *       "Unassign from Michael",
+       *       "Tag with Scranton is the Best Branch",
+       *       "Tag with Michael is the Best Boss"
+       *     ]
+       */
       actions: string[];
       /**
        * @description Whether or not the rule is individual
@@ -6694,11 +6776,11 @@ export interface components {
         };
       };
       /**
-       * @description Timestamp when message was seen
+       * @description Unix timestamp in milliseconds when message was seen
        * @example 1701298738269
        */
-      first_seen_at: string;
-      seen_by: components["schemas"]["ContactHandle"];
+      first_seen_at: number;
+      seen_by: components["schemas"]["ContactHandle"] | null;
     };
     SharedViewResponse: {
       _links: {
@@ -6860,9 +6942,7 @@ export interface components {
       body: string;
       /**
        * @description Sender info of the signature
-       * @example {
-       *       "[object Object]": null
-       *     }
+       * @example {{user.name}}
        */
       sender_info: string | null;
       /**
@@ -7320,7 +7400,7 @@ export interface components {
     };
     UpdateConversation: {
       /** @description ID of the teammate to assign the conversation to. Set it to null to unassign. */
-      assignee_id?: string;
+      assignee_id?: string | null;
       /** @description ID of the inbox to move the conversation to. */
       inbox_id?: string;
       /**
@@ -7347,7 +7427,7 @@ export interface components {
     };
     UpdateConversationAssignee: {
       /** @description ID of the teammate to assign the conversation to. Set it to null to unassign. */
-      assignee_id: string;
+      assignee_id: string | null;
     };
     UpdateConversationReminders: {
       /** @description ID of the teammate to create a reminder for. For a private conversation, specify the id of the teammate that owns the conversation. For a shared conversation, use the id of any teammate that has access to the conversation's shared inbox. Alternatively, you can supply an email as a [resource alias](https://dev.frontapp.com/docs/resource-aliases-1). */
@@ -8580,7 +8660,7 @@ export interface operations {
       path?: never;
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["Account"];
       };
@@ -8647,7 +8727,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["AccountPatch"];
       };
@@ -8690,7 +8770,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["ContactIds"];
       };
@@ -8737,7 +8817,7 @@ export interface operations {
       path?: never;
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["AnalyticsExportRequest"];
       };
@@ -8784,7 +8864,7 @@ export interface operations {
       path?: never;
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["AnalyticsReportRequest"];
       };
@@ -8834,7 +8914,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["AppEvent"];
       };
@@ -8887,7 +8967,7 @@ export interface operations {
       cookie?: never;
     };
     /** @description Channel details */
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["UpdateChannel"];
       };
@@ -8912,7 +8992,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreateDraft"];
       };
@@ -8931,7 +9011,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CustomMessage"];
       };
@@ -8950,7 +9030,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["OutboundMessage"];
       };
@@ -8999,7 +9079,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["UpdateComment"];
       };
@@ -9050,7 +9130,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreateComment"];
       };
@@ -9134,7 +9214,7 @@ export interface operations {
       cookie?: never;
     };
     /** @description Tag to create */
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreateTag"];
       };
@@ -9162,7 +9242,7 @@ export interface operations {
       path?: never;
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreateContactList"];
       };
@@ -9228,7 +9308,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["AddContactsToList"];
       };
@@ -9287,7 +9367,7 @@ export interface operations {
       path?: never;
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreateContactList"];
       };
@@ -9353,7 +9433,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["AddContactsToList"];
       };
@@ -9423,7 +9503,7 @@ export interface operations {
       path?: never;
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreateContact"];
       };
@@ -9451,7 +9531,7 @@ export interface operations {
       path?: never;
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["MergeContacts"];
       };
@@ -9506,7 +9586,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["Contact"];
       };
@@ -9553,7 +9633,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["ContactHandle"];
       };
@@ -9618,7 +9698,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreateContactNote"];
       };
@@ -9657,7 +9737,7 @@ export interface operations {
       path?: never;
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreateConversation"];
       };
@@ -9772,7 +9852,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["UpdateConversation"];
       };
@@ -9811,7 +9891,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["UpdateConversationAssignee"];
       };
@@ -9865,7 +9945,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreateComment"];
       };
@@ -9913,7 +9993,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["ReplyDraft"];
       };
@@ -9991,7 +10071,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": {
           /** @description IDs of the teammate to add to the followers list. Alternatively, you can supply the teammates as a [resource alias](https://dev.frontapp.com/docs/resource-aliases-1). */
@@ -10073,7 +10153,55 @@ export interface operations {
       };
     };
   };
-  "add-conversation-link": {
+  "list-linked-conversations": {
+    parameters: {
+      query?: {
+        /** @description Max number of results per [page](https://dev.frontapp.com/docs/pagination) */
+        limit?: components["parameters"]["limit"];
+        /** @description Token to use to request the [next page](https://dev.frontapp.com/docs/pagination) */
+        page_token?: components["parameters"]["pageToken"];
+      };
+      header?: never;
+      path: {
+        /** @description The conversation ID */
+        conversation_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: components["responses"]["listOfConversations"];
+      /** @description If the conversation has been merged, the response redirects you to the merged conversation. */
+      301: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description If the conversation has no conversations linked to it, or is itself linked to another conversation. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description If your plan does not include linked conversations. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description If the conversation does not exist or is not accessible. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "create-linked-conversations": {
     parameters: {
       query?: never;
       header?: never;
@@ -10084,6 +10212,62 @@ export interface operations {
       cookie?: never;
     };
     requestBody?: {
+      content: {
+        "application/json": {
+          /** @description IDs of the conversations to link to the conversation in the path. */
+          conversation_ids: string[];
+        };
+      };
+    };
+    responses: {
+      /** @description No content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description If the conversation has been merged, the response redirects you to the merged conversation. */
+      301: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description If a conversation is linked to itself, if no ids or more than 20 ids are supplied, if one of them already belongs to a group, or if the conversation in the path was itself linked to another conversation. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description If your plan does not include linked conversations. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description If the conversation in the path or one of the conversations to link does not exist or is not accessible. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "add-conversation-link": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The conversation ID */
+        conversation_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
       content: {
         "application/json": {
           /** @description Link IDs to add. Either link_ids or link_external_urls must be specified but not both */
@@ -10186,7 +10370,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["OutboundReplyMessage"];
       };
@@ -10212,7 +10396,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["UpdateConversationReminders"];
       };
@@ -10245,7 +10429,7 @@ export interface operations {
       cookie?: never;
     };
     /** @description Tag IDs to add */
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["TagIds"];
       };
@@ -10362,7 +10546,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["EditDraft"];
       };
@@ -10429,7 +10613,7 @@ export interface operations {
       cookie?: never;
     };
     /** @description Inbox details */
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreateInbox"];
       };
@@ -10491,7 +10675,7 @@ export interface operations {
       cookie?: never;
     };
     /** @description Channel to create */
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreateChannel"];
       };
@@ -10538,7 +10722,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["ImportMessage"];
       };
@@ -10573,7 +10757,7 @@ export interface operations {
       cookie?: never;
     };
     /** @description Teammate IDs to add. Alternatively, you can supply teammate emails as a [resource alias](https://dev.frontapp.com/docs/resource-aliases-1). */
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["TeammateIds"];
       };
@@ -10669,7 +10853,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["KnowledgeBaseArticlePatch"];
       };
@@ -10724,7 +10908,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["KnowledgeBaseArticlePatch"];
       };
@@ -10814,7 +10998,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["KnowledgeBaseCategoryPatch"];
       };
@@ -10852,7 +11036,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["KnowledgeBaseCategoryPatch"];
       };
@@ -10880,7 +11064,7 @@ export interface operations {
       path?: never;
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["KnowledgeBaseCreate"];
       };
@@ -10934,7 +11118,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["KnowledgeBaseArticleCreate"];
       };
@@ -10973,7 +11157,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["KnowledgeBaseCategoryCreate"];
       };
@@ -11007,7 +11191,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["KnowledgeBasePatch"];
       };
@@ -11028,7 +11212,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["KnowledgeBaseArticleCreate"];
       };
@@ -11049,7 +11233,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["KnowledgeBaseCategoryCreate"];
       };
@@ -11087,7 +11271,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["KnowledgeBasePatch"];
       };
@@ -11127,7 +11311,7 @@ export interface operations {
       cookie?: never;
     };
     /** @description Link to create */
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreateLink"];
       };
@@ -11174,7 +11358,7 @@ export interface operations {
       cookie?: never;
     };
     /** @description Link fields to update */
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["UpdateLink"];
       };
@@ -11252,7 +11436,7 @@ export interface operations {
       cookie?: never;
     };
     /** @description Message template folder to create */
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreateMessageTemplateFolder"];
       };
@@ -11302,7 +11486,7 @@ export interface operations {
       cookie?: never;
     };
     /** @description Message template folder to update */
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["UpdateMessageTemplateFolder"];
       };
@@ -11337,7 +11521,7 @@ export interface operations {
       cookie?: never;
     };
     /** @description Message template folder to create */
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreateMessageTemplateFolderAsChild"];
       };
@@ -11372,7 +11556,7 @@ export interface operations {
       cookie?: never;
     };
     /** @description Message template to create */
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreateMessageTemplateAsChild"];
       };
@@ -11406,7 +11590,7 @@ export interface operations {
       cookie?: never;
     };
     /** @description Message template to create */
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreateSharedMessageTemplate"];
       };
@@ -11540,7 +11724,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": Record<string, never>;
       };
@@ -11602,7 +11786,7 @@ export interface operations {
       cookie?: never;
     };
     /** @description Shift to create details */
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreateShift"];
       };
@@ -11637,7 +11821,7 @@ export interface operations {
       cookie?: never;
     };
     /** @description Updated Shift Body */
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["UpdateShift"];
       };
@@ -11678,7 +11862,7 @@ export interface operations {
       cookie?: never;
     };
     /** @description Teammate IDs to add. Alternatively, you can supply emails as a [resource alias](https://dev.frontapp.com/docs/resource-aliases-1). */
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["TeammateIds"];
       };
@@ -11766,7 +11950,7 @@ export interface operations {
       cookie?: never;
     };
     /** @description Signature to update */
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["UpdateSignature"];
       };
@@ -11804,7 +11988,7 @@ export interface operations {
       cookie?: never;
     };
     /** @description Tag to create */
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreateTag"];
       };
@@ -11860,7 +12044,7 @@ export interface operations {
       cookie?: never;
     };
     /** @description Child Tag to update */
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["UpdateTag"];
       };
@@ -11901,7 +12085,7 @@ export interface operations {
       cookie?: never;
     };
     /** @description Child Tag to create */
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreateTag"];
       };
@@ -11951,7 +12135,7 @@ export interface operations {
       path?: never;
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreateTeammateGroup"];
       };
@@ -12006,7 +12190,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["UpdateTeammateGroup"];
       };
@@ -12047,7 +12231,7 @@ export interface operations {
       cookie?: never;
     };
     /** @description Inbox IDs to add */
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["InboxIds"];
       };
@@ -12114,7 +12298,7 @@ export interface operations {
       cookie?: never;
     };
     /** @description Teammate IDs to add. Alternatively, you can supply emails as a [resource alias](https://dev.frontapp.com/docs/resource-aliases-1). */
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["TeammateIds"];
       };
@@ -12181,7 +12365,7 @@ export interface operations {
       cookie?: never;
     };
     /** @description Team IDs to add */
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["TeamIds"];
       };
@@ -12271,7 +12455,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["UpdateTeammate"];
       };
@@ -12326,7 +12510,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreateContactList"];
       };
@@ -12366,7 +12550,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreateContactList"];
       };
@@ -12417,7 +12601,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreateContact"];
       };
@@ -12494,7 +12678,7 @@ export interface operations {
       cookie?: never;
     };
     /** @description Message template folder to create */
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreateMessageTemplateFolder"];
       };
@@ -12534,7 +12718,7 @@ export interface operations {
       cookie?: never;
     };
     /** @description Message template to create */
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreatePrivateMessageTemplate"];
       };
@@ -12569,7 +12753,7 @@ export interface operations {
       cookie?: never;
     };
     /** @description Inbox details */
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreatePrivateInbox"];
       };
@@ -12634,7 +12818,7 @@ export interface operations {
       cookie?: never;
     };
     /** @description Signature to create */
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreatePrivateSignature"];
       };
@@ -12678,7 +12862,7 @@ export interface operations {
       cookie?: never;
     };
     /** @description Tag to create */
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreateTag"];
       };
@@ -12795,7 +12979,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreateContactList"];
       };
@@ -12835,7 +13019,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreateContactList"];
       };
@@ -12886,7 +13070,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreateContact"];
       };
@@ -12921,7 +13105,7 @@ export interface operations {
       cookie?: never;
     };
     /** @description Inbox details */
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreateTeamInbox"];
       };
@@ -12961,7 +13145,7 @@ export interface operations {
       cookie?: never;
     };
     /** @description Message template folder to create */
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreateMessageTemplateFolder"];
       };
@@ -13001,7 +13185,7 @@ export interface operations {
       cookie?: never;
     };
     /** @description Message template to create */
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreateSharedMessageTemplate"];
       };
@@ -13051,7 +13235,7 @@ export interface operations {
       cookie?: never;
     };
     /** @description Shift to create details */
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreateShift"];
       };
@@ -13086,7 +13270,7 @@ export interface operations {
       cookie?: never;
     };
     /** @description Signature to create */
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreateSharedSignature"];
       };
@@ -13130,7 +13314,7 @@ export interface operations {
       cookie?: never;
     };
     /** @description Tag to create */
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreateTag"];
       };
@@ -13150,7 +13334,7 @@ export interface operations {
       cookie?: never;
     };
     /** @description Teammate IDs to add. Alternatively, you can supply emails as a [resource alias](https://dev.frontapp.com/docs/resource-aliases-1). */
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["TeammateIds"];
       };
@@ -13244,7 +13428,7 @@ export interface operations {
       cookie?: never;
     };
     /** @description View to create */
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["CreateView"];
       };
@@ -13357,7 +13541,7 @@ export interface operations {
       cookie?: never;
     };
     /** @description View properties to update */
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": components["schemas"]["UpdateView"];
       };
@@ -13383,7 +13567,7 @@ export interface operations {
       cookie?: never;
     };
     /** @description Teammate IDs to add. Alternatively, you can supply emails as a [resource alias](https://dev.frontapp.com/docs/resource-aliases-1). */
-    requestBody?: {
+    requestBody: {
       content: {
         "application/json": {
           teammate_ids: string[];

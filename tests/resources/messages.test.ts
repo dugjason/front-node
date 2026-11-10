@@ -21,6 +21,7 @@ describe("messages", () => {
     const m = await front.messages.get("msg_1");
     expect(m).toBeInstanceOf(FrontMessages);
     expect(m.data?.id).toBe("msg_1");
+    expect(m.data?.author).toBeNull();
     expect(requests[0]?.method).toBe("GET");
     expect(requests[0]?.url).toBe("https://api2.frontapp.com/messages/msg_1");
   });

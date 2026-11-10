@@ -1,5 +1,10 @@
 import { FrontBase } from "../base";
 import type { components, operations } from "../gen/schema.gen";
+import {
+  normalizeEventMessageAuthor,
+  normalizeMessageAuthor,
+  normalizeResponseResults,
+} from "../normalize-message-response";
 import type { WithNormalizedPagination } from "../normalize-response";
 import { FrontResource } from "../resource";
 import type { CreateComment } from "./comments";
@@ -147,7 +152,7 @@ const queryFromListConversationMessages = (
   return out;
 };
 
-const requestListConversationMessages = (
+const requestListConversationMessages = async (
   base: FrontBase,
   conversationId: string,
   query?: ListConversationMessagesQuery,
@@ -155,9 +160,12 @@ const requestListConversationMessages = (
   const path = FrontBase.expandPath("/conversations/{conversation_id}/messages", {
     conversation_id: conversationId,
   });
-  return base.requestJson<WithNormalizedPagination<ListConversationMessagesResponse>>("GET", path, {
+  const messages = await base.requestJson<
+    WithNormalizedPagination<ListConversationMessagesResponse>
+  >("GET", path, {
     query: queryFromListConversationMessages(query),
   });
+  return normalizeResponseResults(messages, normalizeMessageAuthor);
 };
 
 const queryFromAddConversationFollowers = (
@@ -240,15 +248,8 @@ const mergeConversationSnapshot = (
     };
   }
 
-  const assigneePatch = filtered.assignee_id as string | null | undefined;
-  if (assigneePatch !== undefined) {
-    next = {
-      ...next,
-      assignee: {
-        ...next.assignee,
-        id: assigneePatch === null ? "" : assigneePatch,
-      },
-    };
+  if (filtered.assignee_id === null) {
+    next = { ...next, assignee: null };
   }
 
   return next;
@@ -257,7 +258,6 @@ const mergeConversationSnapshot = (
 const conversationResponseToUpdateBody = (state: ConversationResponse): UpdateConversation => {
   const status = conversationStatusToUpdateStatus(state.status);
   return {
-    assignee_id: state.assignee.id === "" ? undefined : state.assignee.id,
     custom_fields: state.custom_fields,
     tag_ids: state.tags.map((t) => t.id),
     ...(status === undefined ? {} : { status }),
@@ -268,9 +268,8 @@ const conversationResponseToUpdateBody = (state: ConversationResponse): UpdateCo
 /**
  * One conversation (`/conversations/{conversation_id}` and nested routes).
  *
- * Writable fields for {@link save} map from {@link ConversationResponse} into {@link UpdateConversation}
- * (assignee, status, status id, tags, custom fields). `PATCH` returns `204`; {@link update} merges the
- * request into local state for supported fields — call {@link refresh} when you need an authoritative snapshot.
+ * {@link save} writes status, status ID, tags, and custom fields. To change the assignee, pass
+ * `assignee_id` to {@link update} or {@link updateAssignee}.
  *
  * @see https://dev.frontapp.com/reference/conversations
  */
@@ -353,8 +352,9 @@ export class FrontConversations extends FrontResource<ConversationResponse, Upda
   }
 
   /**
-   * Update this conversation (`PATCH /conversations/{conversation_id}`). The API returns `204`; local state
-   * is merged from the body for supported fields.
+   * Update this conversation (`PATCH /conversations/{conversation_id}`). The API returns `204`.
+   * Local state is merged from the body for supported fields. Call {@link refresh} after assigning
+   * a teammate to load their details.
    *
    * **Required scope:** `conversations:write`
    *
@@ -397,8 +397,8 @@ export class FrontConversations extends FrontResource<ConversationResponse, Upda
 
   /**
    * Assign or unassign (`PUT /conversations/{conversation_id}/assignee`). The API returns `204`.
-   * Pass `{ assignee_id: null }` to unassign (JSON `null` is accepted by the API even when the generated schema
-   * types `assignee_id` as `string`).
+   * Pass `{ assignee_id: null }` to unassign. Call {@link refresh} after assigning a teammate to
+   * load their details.
    *
    * **Required scope:** `conversations:write`
    *
@@ -421,6 +421,9 @@ export class FrontConversations extends FrontResource<ConversationResponse, Upda
       conversation_id: this.id,
     });
     await this.base.requestJson<undefined>("PUT", path, { body: bodyOrConversationId });
+    if (bodyOrConversationId.assignee_id === null && this.hasState()) {
+      this.assign("assignee", null);
+    }
   }
 
   /**
@@ -491,10 +494,10 @@ export class FrontConversations extends FrontResource<ConversationResponse, Upda
     const path = FrontBase.expandPath("/conversations/{conversation_id}/drafts", {
       conversation_id: this.id,
     });
-    return await this.base.requestJson<WithNormalizedPagination<ListConversationDraftsResponse>>(
-      "GET",
-      path,
-    );
+    const drafts = await this.base.requestJson<
+      WithNormalizedPagination<ListConversationDraftsResponse>
+    >("GET", path);
+    return normalizeResponseResults(drafts, normalizeMessageAuthor);
   }
 
   /**
@@ -519,9 +522,10 @@ export class FrontConversations extends FrontResource<ConversationResponse, Upda
     const path = FrontBase.expandPath("/conversations/{conversation_id}/drafts", {
       conversation_id: this.id,
     });
-    return await this.base.requestJson<MessageResponse>("POST", path, {
+    const draft = await this.base.requestJson<MessageResponse>("POST", path, {
       body: bodyOrConversationId,
     });
+    return normalizeMessageAuthor(draft);
   }
 
   /**
@@ -548,11 +552,10 @@ export class FrontConversations extends FrontResource<ConversationResponse, Upda
     const path = FrontBase.expandPath("/conversations/{conversation_id}/events", {
       conversation_id: this.id,
     });
-    return await this.base.requestJson<WithNormalizedPagination<ListConversationEventsResponse>>(
-      "GET",
-      path,
-      { query: queryFromListConversationEvents(queryOrConversationId) },
-    );
+    const events = await this.base.requestJson<
+      WithNormalizedPagination<ListConversationEventsResponse>
+    >("GET", path, { query: queryFromListConversationEvents(queryOrConversationId) });
+    return normalizeResponseResults(events, normalizeEventMessageAuthor);
   }
 
   /**
